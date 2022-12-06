@@ -11,13 +11,13 @@ import packet_struct_pkg::*;
     ,input  logic   [`IP_ADDR_W-1:0]        recv_dst_ip
     ,input  logic                           recv_tcp_hdr_val
     ,input  tcp_pkt_hdr                     recv_tcp_hdr
-    ,input  smol_payload_buf_struct         recv_payload_entry
+    ,input  payload_buf_struct              recv_payload_entry
     ,output logic                           recv_hdr_rdy
     
     ,output logic                           tcp_rx_dst_hdr_val
     ,output logic   [FLOWID_W-1:0]          tcp_rx_dst_flowid
     ,output logic                           tcp_rx_dst_pkt_accept
-    ,output smol_payload_buf_struct         tcp_rx_dst_payload_entry
+    ,output payload_buf_struct              tcp_rx_dst_payload_entry
     ,input  logic                           dst_tcp_rx_hdr_rdy
 
     ,output logic                           new_flow_val

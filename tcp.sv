@@ -12,14 +12,14 @@ import packet_struct_pkg::*;
     ,input          [`IP_ADDR_W-1:0]            src_tcp_rx_src_ip
     ,input          [`IP_ADDR_W-1:0]            src_tcp_rx_dst_ip
     ,input  tcp_pkt_hdr                         src_tcp_rx_tcp_hdr
-    ,input  smol_payload_buf_struct             src_tcp_rx_payload_entry
+    ,input  payload_buf_struct                  src_tcp_rx_payload_entry
 
     ,output logic                               tx_pkt_hdr_val
     ,output tcp_pkt_hdr                         tx_pkt_hdr
     ,output logic   [FLOWID_W-1:0]              tx_pkt_flowid
     ,output logic   [`IP_ADDR_W-1:0]            tx_pkt_src_ip_addr
     ,output logic   [`IP_ADDR_W-1:0]            tx_pkt_dst_ip_addr
-    ,output smol_payload_buf_struct             tx_pkt_payload
+    ,output payload_buf_struct                  tx_pkt_payload
     ,input  logic                               tx_pkt_hdr_rdy
    
     /********************************
@@ -28,7 +28,7 @@ import packet_struct_pkg::*;
     ,output logic                               tcp_rx_dst_hdr_val
     ,output logic   [FLOWID_W-1:0]              tcp_rx_dst_flowid
     ,output logic                               tcp_rx_dst_pkt_accept
-    ,output smol_payload_buf_struct             tcp_rx_dst_payload_entry
+    ,output payload_buf_struct                  tcp_rx_dst_payload_entry
     ,input  logic                               dst_tcp_rx_hdr_rdy
 
     ,input  logic                               store_buf_commit_ptr_wr_req_val
@@ -176,7 +176,7 @@ import packet_struct_pkg::*;
     logic                           rx_send_pkt_mux_val;
     logic   [FLOWID_W-1:0]          rx_send_pkt_flowid;
     tcp_pkt_hdr                     rx_send_pkt_hdr;
-    smol_payload_buf_struct         rx_send_pkt_payload;
+    payload_buf_struct              rx_send_pkt_payload;
     logic   [`IP_ADDR_W-1:0]        rx_send_pkt_src_ip;
     logic   [`IP_ADDR_W-1:0]        rx_send_pkt_dst_ip;
     send_pkt_struct                 rx_send_pkt_mux_data;
@@ -184,7 +184,7 @@ import packet_struct_pkg::*;
     
     logic                           tx_send_pkt_mux_val;
     tcp_pkt_hdr                     tx_send_pkt_mux_hdr;
-    smol_payload_buf_struct         tx_send_pkt_mux_payload;
+    payload_buf_struct              tx_send_pkt_mux_payload;
     logic   [`IP_ADDR_W-1:0]        tx_send_pkt_mux_src_ip;
     logic   [`IP_ADDR_W-1:0]        tx_send_pkt_mux_dst_ip;
     logic   [FLOWID_W-1:0]          tx_send_pkt_mux_flowid;

@@ -41,7 +41,7 @@ package tcp_misc_pkg;
     typedef struct packed {
         tcp_pkt_hdr                 pkt_hdr;
         logic   [FLOWID_W-1:0]      flowid;
-        smol_payload_buf_struct     payload;
+        payload_buf_struct          payload;
         logic   [`IP_ADDR_W-1:0]    src_ip; 
         logic   [`IP_ADDR_W-1:0]    dst_ip;
     } send_pkt_struct;

@@ -48,7 +48,7 @@ import packet_struct_pkg::*;
     ,output tcp_pkt_hdr                     tx_pkt_hdr
     ,output logic   [`IP_ADDR_W-1:0]        tx_pkt_src_ip_addr
     ,output logic   [`IP_ADDR_W-1:0]        tx_pkt_dst_ip_addr
-    ,output smol_payload_buf_struct         tx_pkt_payload
+    ,output payload_buf_struct              tx_pkt_payload
     ,input  logic                           tx_pkt_hdr_rdy
     
     ,input  logic                           new_flow_val

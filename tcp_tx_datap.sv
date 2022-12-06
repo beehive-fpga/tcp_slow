@@ -40,7 +40,7 @@ import packet_struct_pkg::*;
     ,output logic   [FLOWID_W-1:0]          proto_calc_tx_flowid
     ,output logic   [`IP_ADDR_W-1:0]        proto_calc_tx_src_ip_addr
     ,output logic   [`IP_ADDR_W-1:0]        proto_calc_tx_dst_ip_addr
-    ,output smol_payload_buf_struct         proto_calc_tx_payload
+    ,output payload_buf_struct              proto_calc_tx_payload
 );
 
     sched_data_struct   sched_data_reg;
@@ -61,8 +61,8 @@ import packet_struct_pkg::*;
     four_tuple_struct                   flow_tuple_reg;
     four_tuple_struct                   flow_tuple_next;
 
-    smol_payload_buf_struct             payload_desc_reg;
-    smol_payload_buf_struct             payload_desc_next;
+    payload_buf_struct                  payload_desc_reg;
+    payload_buf_struct                  payload_desc_next;
 
     tcp_pkt_hdr                         hdr_out_reg;
     tcp_pkt_hdr                         hdr_out_next;
@@ -73,7 +73,7 @@ import packet_struct_pkg::*;
     
     logic   [`SEQ_NUM_W-1:0]    pkt_seq_num;
     logic   [`SEQ_NUM_W-1:0]    our_next_seq_num;
-    smol_payload_buf_struct     payload_desc;
+    payload_buf_struct          payload_desc;
 
     sched_cmd_struct            update_cmd_reg;
     sched_cmd_struct            update_cmd_next;

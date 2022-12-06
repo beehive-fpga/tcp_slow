@@ -9,11 +9,11 @@ import packet_struct_pkg::*;
     ,input  logic   [`IP_ADDR_W-1:0]        rx_src_ip
     ,input  logic   [`IP_ADDR_W-1:0]        rx_dst_ip
     ,input  tcp_pkt_hdr                     rx_tcp_hdr
-    ,input  smol_payload_buf_struct         rx_payload_entry
+    ,input  payload_buf_struct              rx_payload_entry
     
     ,output logic   [FLOWID_W-1:0]          tcp_rx_dst_flowid
     ,output logic                           tcp_rx_dst_pkt_accept
-    ,output smol_payload_buf_struct         tcp_rx_dst_payload_entry
+    ,output payload_buf_struct              tcp_rx_dst_payload_entry
 
     ,output four_tuple_struct               read_flow_cam_tag 
     ,input          [FLOWID_W-1:0]          read_flow_cam_flowid
@@ -86,8 +86,8 @@ import packet_struct_pkg::*;
     tcp_pkt_hdr                 tcp_hdr_reg;
     tcp_pkt_hdr                 tcp_hdr_next;
 
-    smol_payload_buf_struct     payload_entry_reg;
-    smol_payload_buf_struct     payload_entry_next;
+    payload_buf_struct          payload_entry_reg;
+    payload_buf_struct          payload_entry_next;
 
     smol_rx_state_struct        curr_rx_data_reg;
     smol_tx_state_struct        curr_tx_data_reg;

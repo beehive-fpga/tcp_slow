@@ -20,8 +20,8 @@ package tcp_pkg;
     typedef struct packed {
         logic   [PAYLOAD_ENTRY_ADDR_W-1:0]  payload_addr;
         logic   [PAYLOAD_ENTRY_LEN_W-1:0]   payload_len;
-    } smol_payload_buf_struct;
-    localparam SMOL_PAYLOAD_BUF_STRUCT_W = $bits(smol_payload_buf_struct);
+    } payload_buf_struct;
+    localparam SMOL_PAYLOAD_BUF_STRUCT_W = $bits(payload_buf_struct);
 
     typedef struct packed {
         logic   [`ACK_NUM_W-1:0]    ack_num;
