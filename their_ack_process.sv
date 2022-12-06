@@ -29,21 +29,22 @@ import tcp_pkg::*;
     // we're calculating ack numbers here by bytes rather than straight packet numbers
     // this can be modified later
     always_comb begin
-        next_ack_num = curr_ack_num;
+        their_next_ack_num = their_curr_ack_num;
         next_rx_tail_ptr = rx_tail_ptr;
         our_win = rx_buf_space_left;
+        accept_payload = 1'b0;
 
         // if we've received the packet we expect, then ack for the next byte
         if (rx_buf_has_space & (packet_seq_num == their_curr_ack_num)) begin
             accept_payload = 1'b1;
-            next_ack_num = packet_seq_num + packet_payload_len;
+            their_next_ack_num = packet_seq_num + packet_payload_len;
             next_rx_tail_ptr = rx_tail_ptr + packet_payload_len;
             our_win = rx_buf_space_left - packet_payload_len;
         end
         // we're somehow out of order...just dup ack
         else begin
             accept_payload = 1'b0;
-            next_ack_num = curr_ack_num;
+            their_next_ack_num = their_curr_ack_num;
             next_rx_tail_ptr = rx_tail_ptr;
             our_win = rx_buf_space_left;
         end

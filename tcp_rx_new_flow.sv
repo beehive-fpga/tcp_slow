@@ -1,4 +1,6 @@
-module tcp_rx_new_flow_ctrl (
+module tcp_rx_new_flow_ctrl 
+import packet_struct_pkg::*;
+(
      input clk
     ,input rst
 
@@ -55,9 +57,10 @@ module tcp_rx_new_flow_ctrl (
     always_comb begin
         slow_path_rdy = 1'b0;
         init_state_val = 1'b0;
-        fsm_send_pkt_enqueue_val = 1'b0;
+        slow_path_send_pkt_enqueue_val = 1'b0;
         app_flow_notif_val = 1'b0;
         slow_path_done_val = 1'b0;
+        slow_path_store_flowid = 1'b0;
 
         drop_pkt_next = drop_pkt_reg;
         state_next = state_reg;
@@ -65,12 +68,14 @@ module tcp_rx_new_flow_ctrl (
             STATE_DEC: begin
                 slow_path_rdy = 1'b1;
                 drop_pkt_next = 1'b0;
-                if (slow_path_val && (slow_path_pkt.flags == `TCP_SYN)) begin
-                    state_next = NEW_FLOWID;
-                end
-                else begin
-                    drop_pkt_next = 1'b1;
-                    state_next = FIN;
+                if (slow_path_val) begin
+                    if (slow_path_pkt.flags == `TCP_SYN) begin
+                        state_next = NEW_FLOWID;
+                    end
+                    else begin
+                        drop_pkt_next = 1'b1;
+                        state_next = FIN;
+                    end
                 end
             end
             NEW_FLOWID: begin
@@ -90,8 +95,8 @@ module tcp_rx_new_flow_ctrl (
                 end
             end
             SEND_SYN_ACK: begin
-                fsm_send_pkt_enqueue_val = 1'b1;
-                if (fsm_send_pkt_enqueue_rdy) begin
+                slow_path_send_pkt_enqueue_val = 1'b1;
+                if (slow_path_send_pkt_enqueue_rdy) begin
                     state_next = NOTIF_APP;
                 end
             end

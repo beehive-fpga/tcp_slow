@@ -1,0 +1,42 @@
+CAPI=2:
+name: uwcse:beehive:tcp_engine:0.1
+description: An implementation of TCP
+filesets:
+    rtl:
+        files:
+            - include/tcp_pkg.sv
+            - include/tcp_misc_pkg.sv
+            - flowid_manager.sv
+            - mem_mux.sv
+            - new_state_mux.sv
+            - our_ack_process.sv
+            - prio0_mux.sv
+            - rr_sched_engine.sv
+            - rx_buf_ptrs.sv
+            - sched_cmd_flag_update.sv
+            - seg_size_calc.sv
+            - send_pkt_mux.sv
+            - tcp.sv
+            - tcp_hdr_assembler.sv
+            - tcp_rx.sv
+            - tcp_rx_ctrl.sv
+            - tcp_rx_datap.sv
+            - tcp_rx_new_flow.sv
+            - tcp_tx.sv
+            - tcp_tx_ctrl.sv
+            - tcp_tx_datap.sv
+            - their_ack_process.sv
+            - tx_buf_ptrs.sv
+            - tx_timeout_eng.sv
+        depend:
+            - uwcse:beehive:common_inc
+            - uwcse:buckfast:bsg_misc
+            - uwcse:buckfast:bsg_mem
+            - uwcse:buckfast:ram
+            - uwcse:buckfast:fifo
+            - uwcse:beehive:misc
+        file_type: systemVerilogSource
+
+targets:
+    default:
+        filesets: [rtl]

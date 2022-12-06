@@ -107,7 +107,7 @@ module mem_mux #(
                         state_next = READY;
                     end
                 end
-                else if (src_sel_reg_p == SRC_1) begin
+                else if (src_sel_reg == SRC_1) begin
                     src1_rd_resp_val = dst_rd_resp_val;
                     dst_rd_resp_rdy = src1_rd_resp_rdy;
 

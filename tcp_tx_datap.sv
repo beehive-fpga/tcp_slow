@@ -1,13 +1,14 @@
 module tcp_tx_datap
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
+import packet_struct_pkg::*;
 (
      input clk
     ,input rst
 
     ,input  sched_data_struct               sched_tx_req_data
     
-    ,output sched_cmd_struct                sched_tx_update_cmd
+    ,output sched_cmd_struct                tx_sched_update_cmd
 
     ,output logic   [FLOWID_W-1:0]          tx_pipe_tx_tail_ptr_rd_req_addr
     
@@ -26,7 +27,7 @@ import tcp_misc_pkg::*;
 
     ,output logic   [FLOWID_W-1:0]          proto_calc_tuple_rd_req_addr
 
-    ,input  flow_lookup_entry               tuple_proto_calc_rd_resp_data
+    ,input  four_tuple_struct               tuple_proto_calc_rd_resp_data
 
     ,input  logic                           ctrl_datap_store_flowid
     ,input  logic                           ctrl_datap_store_state
@@ -36,6 +37,7 @@ import tcp_misc_pkg::*;
     ,output logic                           datap_ctrl_produce_pkt
 
     ,output tcp_pkt_hdr                     proto_calc_tx_pkt_hdr
+    ,output logic   [FLOWID_W-1:0]          proto_calc_tx_flowid
     ,output logic   [`IP_ADDR_W-1:0]        proto_calc_tx_src_ip_addr
     ,output logic   [`IP_ADDR_W-1:0]        proto_calc_tx_dst_ip_addr
     ,output smol_payload_buf_struct         proto_calc_tx_payload
@@ -56,8 +58,8 @@ import tcp_misc_pkg::*;
     smol_rx_state_struct                curr_rx_state_reg;
     smol_rx_state_struct                curr_rx_state_next;
 
-    flow_lookup_entry                   flow_tuple_reg;
-    flow_lookup_entry                   flow_tuple_next;
+    four_tuple_struct                   flow_tuple_reg;
+    four_tuple_struct                   flow_tuple_next;
 
     smol_payload_buf_struct             payload_desc_reg;
     smol_payload_buf_struct             payload_desc_next;
@@ -84,10 +86,15 @@ import tcp_misc_pkg::*;
     assign proto_calc_rx_state_rd_req_addr = sched_data_reg.flowid;
     assign proto_calc_tuple_rd_req_addr = sched_data_reg.flowid;
 
+    assign proto_calc_next_tx_state_wr_req_data = next_tx_state_reg;
+
     assign proto_calc_tx_src_ip_addr = flow_tuple_reg.host_ip;
     assign proto_calc_tx_dst_ip_addr = flow_tuple_reg.dest_ip;
     assign proto_calc_tx_pkt_hdr = hdr_out_reg;
     assign proto_calc_tx_payload = payload_desc_reg;
+    assign proto_calc_tx_flowid = sched_data_reg.flowid;
+
+    assign tx_sched_update_cmd = update_cmd_reg;
 
 
     always_ff @(posedge clk) begin
@@ -96,6 +103,10 @@ import tcp_misc_pkg::*;
         curr_tx_state_reg <= curr_tx_state_next;
         curr_rx_state_reg <= curr_rx_state_next;
         flow_tuple_reg <= flow_tuple_next;
+        update_cmd_reg <= update_cmd_next;
+        hdr_out_reg <= hdr_out_next;
+        payload_desc_reg <= payload_desc_next;
+        next_tx_state_reg <= next_tx_state_next;
     end
 
     always_comb begin
@@ -141,18 +152,18 @@ import tcp_misc_pkg::*;
     seg_size_calc #(
         .ptr_w(TX_PAYLOAD_PTR_W)
     ) rt_segment (
-         .trail_ptr (curr_rx_state_reg.our_ack_state.ack_num    )
-        ,.lead_ptr  (curr_tx_tail_ptr_reg                       )
-        ,.seg_size  (rt_seg_size                                )
+         .trail_ptr (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
+        ,.lead_ptr  (curr_tx_tail_ptr_reg                                           )
+        ,.seg_size  (rt_seg_size                                                    )
     );
 
     // for the new segment, calculate from the sequence number
     seg_size_calc #(
         .ptr_w(TX_PAYLOAD_PTR_W)
     ) new_segment (
-         .trail_ptr  (curr_tx_state_reg.our_seq_num     )
-        ,.lead_ptr   (curr_tx_tail_ptr_reg              )
-        ,.seg_size   (new_seg_size                      )
+         .trail_ptr  (curr_tx_state_reg.our_seq_num[TX_PAYLOAD_PTR_W:0] )
+        ,.lead_ptr   (curr_tx_tail_ptr_reg                              )
+        ,.seg_size   (new_seg_size                                      )
     );
 
     always_comb begin
@@ -194,15 +205,19 @@ import tcp_misc_pkg::*;
     end
 
     always_comb begin
-        update_cmd = 0';
+        update_cmd = '0;
         update_cmd.flowid = sched_data_reg.flowid;
-        update_cmd.rt_pend_set_clear = CLEAR;
-        update_cmd.ack_pend_set_clear = CLEAR;
+        update_cmd.rt_pend_set_clear.timestamp = sched_data_reg.rt_flag.timestamp;
+        update_cmd.rt_pend_set_clear.cmd = CLEAR;
+
+        update_cmd.ack_pend_set_clear.timestamp = sched_data_reg.ack_pend_flag.timestamp;
+        update_cmd.ack_pend_set_clear.cmd = CLEAR;
 
         // FIXME: if we've emptied the last of the data from the buffer, clear that there's data pending,
         // but we need to be careful not to clear it if the app has set it while we've been processing.
         // For now, don't clear
-        update_cmd.data_pend_set_clear = NOP;
+        update_cmd.data_pend_set_clear.timestamp = sched_data_reg.data_pend_flag.timestamp;
+        update_cmd.data_pend_set_clear.cmd = NOP;
     end
 
     // since we can't count on the data pending flag, we need to check if the payload actually has length.
@@ -211,8 +226,8 @@ import tcp_misc_pkg::*;
 
     tcp_hdr_assembler hdr_assembler (
          .tcp_hdr_req_val       (1'b1   )
-        ,.host_port             (flow_tuple_reg.host_port           )
-        ,.dest_port             (flow_tuple_reg.dest_port           )
+        ,.host_port             (flow_tuple_next.host_port          )
+        ,.dest_port             (flow_tuple_next.dest_port          )
         ,.seq_num               (pkt_seq_num                        )
         ,.ack_num               (curr_rx_state_reg.their_ack_num    )
         ,.flags                 (`TCP_ACK | `TCP_PSH                )

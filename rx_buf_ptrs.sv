@@ -119,8 +119,8 @@ import tcp_pkg::*;
                                       : commit_ptr_wr_req_data;
 
     ram_2r1w_sync_backpressure #(
-         .width_p   (RX_PAYLOAD_PTR_W + 1  )
-        ,.els_p     (MAX_FLOW_CNT          )
+         .width_p   (RX_PAYLOAD_PTR_W + 1   )
+        ,.els_p     (MAX_TCP_FLOWS          )
     ) head_ptrs (
          .clk   (clk)
         ,.rst   (rst)
@@ -150,8 +150,8 @@ import tcp_pkg::*;
     );
     
     ram_2r1w_sync_backpressure #(
-         .width_p   (RX_PAYLOAD_PTR_W + 1  )
-        ,.els_p     (`MAX_FLOW_CNT          )
+         .width_p   (RX_PAYLOAD_PTR_W + 1   )
+        ,.els_p     (MAX_TCP_FLOWS          )
     ) commit_ptrs (
          .clk   (clk)
         ,.rst   (rst)
@@ -181,8 +181,8 @@ import tcp_pkg::*;
     );
 
     ram_1r1w_sync_backpressure #(
-         .width_p   (RX_PAYLOAD_PTR_W + 1  )
-        ,.els_p     (`MAX_FLOW_CNT          )
+         .width_p   (RX_PAYLOAD_PTR_W + 1   )
+        ,.els_p     (MAX_TCP_FLOWS          )
     ) tail_ptrs (
          .clk   (clk    )
         ,.rst   (rst    )

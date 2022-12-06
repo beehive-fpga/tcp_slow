@@ -2,7 +2,7 @@
 module our_ack_process 
 import tcp_pkg::*;
 (
-    ,input  logic   [`ACK_NUM_W-1:0]            pkt_ack_num
+     input  logic   [`ACK_NUM_W-1:0]            pkt_ack_num
     ,input  logic   [`SEQ_NUM_W-1:0]            our_curr_seq_num
     ,input  ack_state_struct                    our_curr_ack_state
 
@@ -31,10 +31,10 @@ import tcp_pkg::*;
 
     assign next_tx_head_ptr = our_next_ack_state.ack_num[TX_PAYLOAD_PTR_W:0];
 
-    assign dup_ack = (curr_ack_num == pkt_ack_num) & data_unacked;
+    assign dup_ack = (our_curr_ack_num == pkt_ack_num) & data_unacked;
 
     always_comb begin
-        our_next_ack_num = our_curr_ack_num;
+        update_ack = 1'b0;
         // if the sequence number has wrapped, but the ack number hasn't yet
         // if there's actually data waiting to be ACKed, the ACK is valid if
         // it is either greater than the current ACK num (so between ACK and max
@@ -43,7 +43,7 @@ import tcp_pkg::*;
         if (our_curr_seq_num < our_curr_ack_num) begin
             if (data_unacked 
              & ((pkt_ack_num > our_curr_ack_num)
-             |  (pkt_ack_num =< our_curr_seq_num + 1))) begin
+             |  (pkt_ack_num <= our_curr_seq_num + 1))) begin
                 update_ack = 1'b1;
             end
         end
@@ -59,14 +59,14 @@ import tcp_pkg::*;
     end
 
     always_comb begin
-        next_ack_cnt = curr_ack_cnt;
+        next_ack_cnt = our_curr_ack_cnt;
         if (~data_unacked | set_rt_flag | ~dup_ack) begin
             next_ack_cnt = '0;
         end
         else begin
-            next_ack_cnt = curr_ack_cnt + dup_ack;
+            next_ack_cnt = our_curr_ack_cnt + dup_ack;
         end
     end
 
-    assign set_rt_flag = (curr_ack_cnt + dup_ack) == RT_ACK_THRESHOLD;
+    assign set_rt_flag = (our_curr_ack_cnt + dup_ack) == RT_ACK_THRESHOLD;
 endmodule

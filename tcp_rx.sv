@@ -2,6 +2,7 @@
 module tcp_rx 
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
+import packet_struct_pkg::*;
 (
      input clk
     ,input rst
@@ -10,13 +11,18 @@ import tcp_misc_pkg::*;
     ,input  logic   [`IP_ADDR_W-1:0]        recv_dst_ip
     ,input  logic                           recv_tcp_hdr_val
     ,input  tcp_pkt_hdr                     recv_tcp_hdr
-    ,input  logic                           recv_payload_val
-    ,input  payload_buf_entry               recv_payload_entry
+    ,input  smol_payload_buf_struct         recv_payload_entry
     ,output logic                           recv_hdr_rdy
+    
+    ,output logic                           tcp_rx_dst_hdr_val
+    ,output logic   [FLOWID_W-1:0]          tcp_rx_dst_flowid
+    ,output logic                           tcp_rx_dst_pkt_accept
+    ,output smol_payload_buf_struct         tcp_rx_dst_payload_entry
+    ,input  logic                           dst_tcp_rx_hdr_rdy
 
     ,output logic                           new_flow_val
     ,output logic   [FLOWID_W-1:0]          new_flow_flow_id
-    ,output flow_lookup_entry               new_flow_lookup_entry
+    ,output four_tuple_struct               new_flow_lookup_entry
     ,output smol_tx_state_struct            new_flow_tx_state
     ,output smol_rx_state_struct            new_flow_rx_state
     ,output logic   [TX_PAYLOAD_PTR_W:0]    new_tx_head_ptr
@@ -25,7 +31,7 @@ import tcp_misc_pkg::*;
     
     ,output logic                           app_new_flow_notif_val
     ,output logic   [FLOWID_W-1:0]          app_new_flow_flowid
-    ,output flow_lookup_entry               app_new_flow_entry
+    ,output four_tuple_struct               app_new_flow_entry
     ,input  logic                           app_new_flow_notif_rdy
     
     ,output logic                           curr_rx_state_rd_req_val
@@ -42,16 +48,12 @@ import tcp_misc_pkg::*;
     ,input  logic                           next_rx_state_wr_req_rdy
 
     ,output logic                           curr_tx_state_rd_req_val
-    ,output logic   [FLOWID_W-1:0]          curr_tx_state_rd_req_flowid
+    ,output logic   [FLOWID_W-1:0]          curr_tx_state_rd_req_addr
     ,input  logic                           curr_tx_state_rd_req_rdy
 
     ,input  logic                           curr_tx_state_rd_resp_val
     ,input  smol_tx_state_struct            curr_tx_state_rd_resp_data
     ,output logic                           curr_tx_state_rd_resp_rdy
-    
-    ,output logic                           rx_send_queue_enq_req_val
-    ,output rx_send_queue_struct            rx_send_queue_enq_req_data
-    ,input  logic                           send_queue_rx_full
     
     ,output logic                           rx_pipe_rx_head_ptr_rd_req_val
     ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_head_ptr_rd_req_addr
@@ -80,9 +82,10 @@ import tcp_misc_pkg::*;
     ,input                                  tx_head_ptr_rx_pipe_wr_req_rdy
 
     ,output logic                           rx_send_pkt_enq_req_val
+    ,output logic   [FLOWID_W-1:0]          rx_send_pkt_enq_flowid
     ,output tcp_pkt_hdr                     rx_send_pkt_enq_pkt
-    ,output [`IP_ADDR_W-1:0]                rx_send_pkt_enq_src_ip
-    ,output [`IP_ADDR_W-1:0]                rx_send_pkt_enq_dst_ip
+    ,output logic   [`IP_ADDR_W-1:0]        rx_send_pkt_enq_src_ip
+    ,output logic   [`IP_ADDR_W-1:0]        rx_send_pkt_enq_dst_ip
     ,input                                  send_pkt_rx_enq_req_rdy
 
     ,output logic                           rx_sched_update_val
@@ -93,7 +96,7 @@ import tcp_misc_pkg::*;
     logic                           read_flow_cam_val;
     logic                           read_flow_cam_hit;
     logic   [FLOWID_W-1:0]          read_flow_cam_flowid;
-    flow_lookup_entry               read_flow_cam_tag 
+    four_tuple_struct               read_flow_cam_tag;
     
     logic                           ctrl_datap_save_input;
     logic                           ctrl_datap_save_flow_state;
@@ -147,8 +150,10 @@ import tcp_misc_pkg::*;
         ,.rst   (rst    )
     
         ,.rx_tcp_hdr_val                    (recv_tcp_hdr_val                   )
-        ,.rx_payload_val                    (recv_payload_val                   )
         ,.rx_hdr_rdy                        (recv_hdr_rdy                       )
+
+        ,.tcp_rx_dst_hdr_val                (tcp_rx_dst_hdr_val                 )
+        ,.dst_tcp_rx_hdr_rdy                (dst_tcp_rx_hdr_rdy                 )
     
         ,.read_flow_cam_val                 (read_flow_cam_val                  )
         ,.read_flow_cam_hit                 (read_flow_cam_hit                  )
@@ -224,6 +229,10 @@ import tcp_misc_pkg::*;
         ,.rx_tcp_hdr                        (recv_tcp_hdr                       )
         ,.rx_payload_entry                  (recv_payload_entry                 )
     
+        ,.tcp_rx_dst_flowid                 (tcp_rx_dst_flowid                  )
+        ,.tcp_rx_dst_pkt_accept             (tcp_rx_dst_pkt_accept              )
+        ,.tcp_rx_dst_payload_entry          (tcp_rx_dst_payload_entry           )
+    
         ,.read_flow_cam_tag                 (read_flow_cam_tag                  )
         ,.read_flow_cam_flowid              (read_flow_cam_flowid               )
     
@@ -236,7 +245,7 @@ import tcp_misc_pkg::*;
         ,.next_rx_state_wr_req_addr         (next_rx_state_wr_req_addr          )
         ,.next_rx_state_wr_req_data         (next_rx_state_wr_req_data          )
     
-        ,.curr_tx_state_rd_req_flowid       (curr_tx_state_rd_req_flowid        )
+        ,.curr_tx_state_rd_req_addr         (curr_tx_state_rd_req_addr          )
     
         ,.curr_tx_state_rd_resp_data        (curr_tx_state_rd_resp_data         )
         
@@ -254,7 +263,7 @@ import tcp_misc_pkg::*;
         ,.rx_pipe_tx_head_ptr_wr_req_addr   (rx_pipe_tx_head_ptr_wr_req_addr    )
         ,.rx_pipe_tx_head_ptr_wr_req_data   (rx_pipe_tx_head_ptr_wr_req_data    )
     
-        ,.new_flow_flowid                   (new_flow_flowid                    )
+        ,.new_flow_flowid                   (new_flow_flow_id                   )
         ,.new_flow_lookup_entry             (new_flow_lookup_entry              )
         ,.new_flow_tx_state                 (new_flow_tx_state                  )
         ,.new_flow_rx_state                 (new_flow_rx_state                  )
@@ -266,17 +275,27 @@ import tcp_misc_pkg::*;
                                                                                 
         ,.ctrl_datap_save_input             (ctrl_datap_save_input              )
         ,.ctrl_datap_save_flow_state        (ctrl_datap_save_flow_state         )
+        ,.ctrl_datap_save_calcs             (ctrl_datap_save_calcs              )
 
         ,.rx_sched_update_cmd               (rx_sched_update_cmd                )
+
+        ,.store_flowid_cam                  (store_flowid_cam                   )
+        ,.store_flowid_manager              (slow_path_store_flowid             )
+
+        ,.datap_slow_path_pkt               (slow_path_pkt                      )
                                                                                 
         ,.slow_path_send_pkt_enqueue_pkt    (rx_send_pkt_enq_pkt                )
+        ,.slow_path_send_pkt_enqueue_flowid (rx_send_pkt_enq_flowid             )
         ,.slow_path_send_pkt_enqueue_src_ip (rx_send_pkt_enq_src_ip             )
         ,.slow_path_send_pkt_enqueue_dst_ip (rx_send_pkt_enq_dst_ip             )
     );
+
+    logic   [MAX_TCP_FLOWS-1:0] cam_wr_val;
+    assign cam_wr_val = {{(FLOWID_W-1){1'b0}}, new_flow_val} << new_flow_flow_id;
     
     bsg_cam_1r1w_unmanaged #(
-         .els_p         (`MAX_FLOW_CNT          )  
-        ,.tag_width_p   (FLOW_LOOKUP_ENTRY_W    )
+         .els_p         (MAX_TCP_FLOWS          )  
+        ,.tag_width_p   (FOUR_TUPLE_STRUCT_W    )
         ,.data_width_p  (FLOWID_W               )
     ) addr_to_flowid (
          .clk_i     (clk)
@@ -284,8 +303,8 @@ import tcp_misc_pkg::*;
 
         // Synchronous write/invalidate of a tag
         // one or zero-hot
-        ,.w_v_i             (init_state_val         )
-        ,.w_set_not_clear_i ()
+        ,.w_v_i             (cam_wr_val             )
+        ,.w_set_not_clear_i (1'b1)
         // Tag/data to set on write
         ,.w_tag_i           (new_flow_lookup_entry  )
         ,.w_data_i          (new_flow_flow_id       )

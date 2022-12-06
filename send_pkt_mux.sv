@@ -1,5 +1,10 @@
-module send_pkt_mux (
-     input                  src0_mux_val
+module send_pkt_mux 
+import tcp_misc_pkg::*;
+(
+     input clk
+    ,input rst
+
+    ,input                  src0_mux_val
     ,input  send_pkt_struct src0_mux_data
     ,output logic           mux_src0_rdy
      
@@ -39,7 +44,7 @@ module send_pkt_mux (
     bsg_mux_one_hot #(
          .width_p   (1)
         ,.els_p     (NUM_SRCS)
-    ) data_mux (
+    ) val_mux (
          .data_i        ({src1_mux_val, src0_mux_val}   )
         ,.sel_one_hot_i (arb_grants     )
         ,.data_o        (mux_dst_val    )

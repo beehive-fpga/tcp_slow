@@ -3,8 +3,10 @@ module tcp_rx_ctrl (
     ,input rst
 
     ,input  logic                           rx_tcp_hdr_val
-    ,input  logic                           rx_payload_val
     ,output logic                           rx_hdr_rdy
+    
+    ,output logic                           tcp_rx_dst_hdr_val
+    ,input  logic                           dst_tcp_rx_hdr_rdy
 
     ,output logic                           read_flow_cam_val
     ,input  logic                           read_flow_cam_hit
@@ -39,7 +41,7 @@ module tcp_rx_ctrl (
     ,input  logic                           rx_tail_ptr_rx_pipe_rd_resp_val
     ,output logic                           rx_pipe_rx_tail_ptr_rd_resp_rdy
     
-    ,output                                 rx_pipe_tx_head_ptr_wr_req_val
+    ,output logic                           rx_pipe_tx_head_ptr_wr_req_val
     ,input                                  tx_head_ptr_rx_pipe_wr_req_rdy
 
     ,output logic                           ctrl_datap_save_input
@@ -59,15 +61,16 @@ module tcp_rx_ctrl (
     ,output logic                           slow_path_done_rdy
 );
 
-    typedef enum logic[2:0] {
-        READ_FLOW_TABLE = 3'd0,
-        READ_STATE = 3'd1,
-        START_NEW_FLOW_SETUP = 3'd2,
-        WAIT_NEW_FLOW_SETUP = 3'd3,
-        WAIT_FLOW_STATE = 3'd4,
-        CALCULATE = 3'd5,
-        WRITEBACK = 3'd6,
-        SET_ACK = 3'd7,
+    typedef enum logic[3:0] {
+        READ_FLOW_TABLE = 4'd0,
+        READ_STATE = 4'd1,
+        START_NEW_FLOW_SETUP = 4'd2,
+        WAIT_NEW_FLOW_SETUP = 4'd3,
+        WAIT_STATE_RESP = 4'd4,
+        CALCULATE = 4'd5,
+        WRITEBACK = 4'd6,
+        SCHEDULE = 4'd7,
+        PKT_OUT = 4'd8,
         UND = 'X
     } state_e;
 
@@ -90,6 +93,8 @@ module tcp_rx_ctrl (
         ctrl_datap_save_flow_state = 1'b0;
         ctrl_datap_save_calcs = 1'b0;
 
+        tcp_rx_dst_hdr_val = 1'b0;
+
         curr_rx_state_rd_req_val = 1'b0;
         curr_tx_state_rd_req_val = 1'b0;
         rx_pipe_rx_head_ptr_rd_req_val = 1'b0;
@@ -108,12 +113,17 @@ module tcp_rx_ctrl (
         slow_path_val = 1'b0;
         slow_path_done_rdy = 1'b0;
 
+        store_flowid_cam = 1'b0;
+
+        rx_sched_update_val = 1'b0;
+
         state_next = state_reg;
         case (state_reg)
             READ_FLOW_TABLE: begin
                 rx_hdr_rdy = 1'b1;
                 ctrl_datap_save_input = 1'b1;
                 read_flow_cam_val = rx_tcp_hdr_val;
+                store_flowid_cam = 1'b1;
 
                 if (rx_tcp_hdr_val) begin
                     if (read_flow_cam_hit) begin
@@ -135,7 +145,7 @@ module tcp_rx_ctrl (
                 rx_pipe_rx_head_ptr_rd_resp_rdy = 1'b1;
                 rx_pipe_rx_tail_ptr_rd_resp_rdy = 1'b1;
 
-                if (curr_rx_state_rd_req_rdy & curr_tx_state_rd_req_rdy
+                if (curr_rx_state_rd_req_rdy & curr_tx_state_rd_req_rdy & 
                     rx_head_ptr_rx_pipe_rd_req_rdy & rx_tail_ptr_rx_pipe_rd_req_rdy) begin
                     state_next = WAIT_STATE_RESP;
                 end
@@ -180,6 +190,12 @@ module tcp_rx_ctrl (
             SCHEDULE: begin
                 rx_sched_update_val = 1'b1;
                 if (sched_rx_update_rdy) begin
+                    state_next = PKT_OUT;
+                end
+            end
+            PKT_OUT: begin
+                tcp_rx_dst_hdr_val = 1'b1;
+                if (dst_tcp_rx_hdr_rdy) begin
                     state_next = READ_FLOW_TABLE;
                 end
             end

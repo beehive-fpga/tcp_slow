@@ -61,9 +61,9 @@ import tcp_misc_pkg::*;
     sched_data_struct       next_sched_state_reg;
     sched_data_struct       next_sched_state_next;
     sched_data_struct       next_sched_state;
-    logic   next_rt_flag;
-    logic   next_ack_flag;
-    logic   next_data_flag;
+    sched_flag_data_struct  next_rt_flag;
+    sched_flag_data_struct  next_ack_flag;
+    sched_flag_data_struct  next_data_flag;
     logic                   store_next_sched_state;
 
     logic                   update_wr_req_val;
@@ -112,11 +112,11 @@ import tcp_misc_pkg::*;
     logic   active_fifo_full;
     logic   [FLOWID_W-1:0]  active_fifo_wr_data;
 
-    sched_cmd_struct    update_val;
+    logic               update_val;
     sched_cmd_struct    update_cmd;
-    sched_cmd_struct    update_rdy;
+    logic               update_rdy;
 
-    assign update_val |= arbiter_vals;
+    assign update_val =| arbiter_vals;
 
     // update scheduler data
     always_ff @(posedge clk) begin
@@ -138,6 +138,9 @@ import tcp_misc_pkg::*;
                                 ? next_sched_state
                                 : next_sched_state_reg;
 
+    assign update_rd_req_addr = update_cmd.flowid;
+    assign update_wr_req_data = next_sched_state_reg;
+
     always_comb begin
         next_sched_state = update_rd_resp_data;
         next_sched_state.rt_flag = next_rt_flag;
@@ -146,24 +149,24 @@ import tcp_misc_pkg::*;
     end
 
     sched_cmd_flag_update rt_flag (
-         .cmd       (cmd_reg.rt_pend_set_clear      )
-        ,.curr_flag (update_rd_resp_data.rt_flag    )
+         .flag_cmd          (cmd_reg.rt_pend_set_clear      )
+        ,.curr_flag_state   (update_rd_resp_data.rt_flag    )
     
-        ,.next_flag (next_rt_flag)
+        ,.next_flag_state   (next_rt_flag                   )
     );
     
     sched_cmd_flag_update ack_flag (
-         .cmd       (cmd_reg.ack_pend_set_clear         )
-        ,.curr_flag (update_rd_resp_data.ack_pend_flag  )
+         .flag_cmd          (cmd_reg.ack_pend_set_clear         )
+        ,.curr_flag_state   (update_rd_resp_data.ack_pend_flag  )
     
-        ,.next_flag (next_ack_flag                      )
+        ,.next_flag_state   (next_ack_flag                      )
     );
     
     sched_cmd_flag_update data_flag (
-         .cmd       (cmd_reg.data_pend_set_clear         )
-        ,.curr_flag (update_rd_resp_data.data_pend_flag  )
+         .flag_cmd          (cmd_reg.data_pend_set_clear         )
+        ,.curr_flag_state   (update_rd_resp_data.data_pend_flag  )
     
-        ,.next_flag (next_data_flag                      )
+        ,.next_flag_state   (next_data_flag                      )
     );
 
     always_comb begin
@@ -176,7 +179,7 @@ import tcp_misc_pkg::*;
 
         update_state_next = update_state_reg;
         case (update_state_reg)
-            RD_SCHED_STATE: begin
+            RD_CMD: begin
                 update_rd_req_val = update_val;
                 update_rdy = update_rd_req_rdy;
                 store_cmd = 1'b1;
@@ -195,7 +198,7 @@ import tcp_misc_pkg::*;
             WRITEBACK: begin
                 update_wr_req_val = 1'b1;
                 if (update_wr_req_rdy) begin
-                    update_state_next = RD_SCHED_STATE;
+                    update_state_next = RD_CMD;
                 end
             end
         endcase
@@ -227,9 +230,9 @@ import tcp_misc_pkg::*;
                             ? find_rd_resp_data
                             : sched_data_reg;
 
-    assign should_sched = find_rd_resp_data.rt_flag 
-                        | find_rd_resp_data.ack_pend_flag 
-                        | find_rd_resp_data.data_pend_flag;
+    assign should_sched = find_rd_resp_data.rt_flag.flag
+                        | find_rd_resp_data.ack_pend_flag.flag
+                        | find_rd_resp_data.data_pend_flag.flag;
 
     always_comb begin
         find_flowid_fifo_rd_req = 1'b0;
@@ -249,7 +252,8 @@ import tcp_misc_pkg::*;
                 find_store_flowid = 1'b1;
                 if (~find_flowid_fifo_empty) begin
                     find_rd_req_val = 1'b1;
-                    find_flowid_fifo_req = 1'b1;
+                    find_flowid_fifo_rd_req = 1'b1;
+                    find_state_next = WAIT_SCHED_STATE;
                 end
             end
             WAIT_SCHED_STATE: begin
@@ -257,15 +261,15 @@ import tcp_misc_pkg::*;
                 store_sched_data = 1'b1;
                 if (find_rd_resp_val) begin
                     if (should_sched) begin
-                        state_next = OUTPUT;
+                        find_state_next = OUTPUT;
                     end
                     else begin
                         find_flowid_fifo_wr_req = 1'b1;
                         if (find_flowid_fifo_wr_rdy) begin
-                            state_next = RD_SCHED_STATE;
+                            find_state_next = RD_SCHED_STATE;
                         end
                         else begin
-                            state_next = REQUEUE;
+                            find_state_next = REQUEUE;
                         end
                     end
                 end
@@ -275,17 +279,17 @@ import tcp_misc_pkg::*;
                 if (tx_sched_req_rdy) begin
                     find_flowid_fifo_wr_req = 1'b1;
                     if (find_flowid_fifo_wr_rdy) begin
-                        state_next = RD_SCHED_STATE;
+                        find_state_next = RD_SCHED_STATE;
                     end
                     else begin
-                        state_next = REQUEUE;
+                        find_state_next = REQUEUE;
                     end
                 end
             end
             REQUEUE: begin
                 find_flowid_fifo_wr_req = 1'b1;
                 if (find_flowid_fifo_wr_rdy) begin
-                    state_next = RD_SCHED_STATE;
+                    find_state_next = RD_SCHED_STATE;
                 end
             end
         endcase
@@ -376,19 +380,19 @@ import tcp_misc_pkg::*;
          .clk   (clk    )
         ,.rst   (rst    )
     
-        ,.rd_req    (find_flowid_fifo_req   )
-        ,.rd_data   (find_flowid_fifo_data  )
-        ,.empty     (find_flowid_fifo_empty )
+        ,.rd_req    (find_flowid_fifo_rd_req    )
+        ,.rd_data   (find_flowid_fifo_rd_data   )
+        ,.empty     (find_flowid_fifo_empty     )
     
-        ,.wr_req    (active_fifo_wr_req     )
-        ,.wr_data   (active_fifo_wr_data    )
-        ,.full      (active_fifo_full       )
+        ,.wr_req    (active_fifo_wr_req         )
+        ,.wr_data   (active_fifo_wr_data        )
+        ,.full      (active_fifo_full           )
     );
 
     assign arbiter_vals = {app_sched_update_val, rx_sched_update_val, tx_sched_update_val};
 
     bsg_arb_round_robin #(
-        ,.width_p   (3  )
+        .width_p   (3  )
     ) cmd_arbiter (
         .clk_i      (clk    )
        ,.reset_i    (rst    )
@@ -399,8 +403,8 @@ import tcp_misc_pkg::*;
     );
     
     bsg_mux_one_hot #(
-         .width_p   (SCHED_DATA_STRUCT_W    )
-        ,.els_p     (ARB_NUM_SRCS           )
+         .width_p   (SCHED_CMD_STRUCT_W )
+        ,.els_p     (ARB_NUM_SRCS       )
     ) update_cmd_mux (
          .data_i        ({app_sched_update_cmd, rx_sched_update_cmd, tx_sched_update_cmd}   )
         ,.sel_one_hot_i (arbiter_grants     )

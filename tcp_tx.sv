@@ -1,5 +1,7 @@
 module tcp_tx 
 import tcp_pkg::*;
+import tcp_misc_pkg::*;
+import packet_struct_pkg::*;
 (
      input clk
     ,input rst
@@ -42,6 +44,7 @@ import tcp_pkg::*;
     ,input  logic                           tx_state_tx_pipe_wr_req_rdy
 
     ,output logic                           tx_pkt_hdr_val
+    ,output logic   [FLOWID_W-1:0]          tx_pkt_flowid
     ,output tcp_pkt_hdr                     tx_pkt_hdr
     ,output logic   [`IP_ADDR_W-1:0]        tx_pkt_src_ip_addr
     ,output logic   [`IP_ADDR_W-1:0]        tx_pkt_dst_ip_addr
@@ -50,7 +53,7 @@ import tcp_pkg::*;
     
     ,input  logic                           new_flow_val
     ,input  logic   [FLOWID_W-1:0]          new_flow_flow_id
-    ,input  flow_lookup_entry               new_flow_lookup_entry
+    ,input  four_tuple_struct               new_flow_lookup_entry
     ,input  smol_rx_state_struct            new_flow_rx_state
     ,output                                 tx_new_flow_rdy
 );
@@ -67,7 +70,7 @@ import tcp_pkg::*;
     logic                   tuple_proto_calc_rd_req_rdy;
 
     logic                   tuple_proto_calc_rd_resp_val;
-    flow_lookup_entry       proto_calc_tuple_rd_resp_data;
+    four_tuple_struct       tuple_proto_calc_rd_resp_data;
     logic                   proto_calc_tuple_rd_resp_rdy;
     
     logic                           proto_calc_rx_state_rd_req_val;
@@ -101,26 +104,26 @@ import tcp_pkg::*;
     
         ,.sched_tx_req_data                     (sched_tx_req_data                      )
         
-        ,.sched_tx_update_cmd                   (proto_calc_tx_sched_update_cmd         )
+        ,.tx_sched_update_cmd                   (proto_calc_tx_sched_update_cmd         )
     
         ,.tx_pipe_tx_tail_ptr_rd_req_addr       (tx_pipe_tx_tail_ptr_rd_req_addr        )
                                                                                  
         ,.tx_tail_ptr_tx_pipe_rd_resp_data      (tx_tail_ptr_tx_pipe_rd_resp_data       )
     
-        ,.proto_calc_curr_tx_state_rd_req_addr  (proto_calc_curr_tx_state_rd_req_addr   )
+        ,.proto_calc_curr_tx_state_rd_req_addr  (tx_pipe_tx_state_rd_req_addr           )
                                                                                         
-        ,.proto_calc_curr_tx_state_rd_resp_data (proto_calc_curr_tx_state_rd_resp_data  )
+        ,.proto_calc_curr_tx_state_rd_resp_data (tx_state_tx_pipe_rd_resp_data          )
     
-        ,.proto_calc_next_tx_state_wr_req_addr  (proto_calc_next_tx_state_wr_req_addr   )
-        ,.proto_calc_next_tx_state_wr_req_data  (proto_calc_next_tx_state_wr_req_data   )
+        ,.proto_calc_next_tx_state_wr_req_addr  (tx_pipe_tx_state_wr_req_addr           )
+        ,.proto_calc_next_tx_state_wr_req_data  (tx_pipe_tx_state_wr_req_data           )
     
         ,.proto_calc_rx_state_rd_req_addr       (proto_calc_rx_state_rd_req_addr        )
-                                                                           
+                                                 
         ,.rx_state_proto_calc_rd_resp_data      (rx_state_proto_calc_rd_resp_data       )
     
         ,.proto_calc_tuple_rd_req_addr          (proto_calc_tuple_rd_req_addr           )
                                                                               
-        ,.proto_calc_tuple_rd_resp_data         (proto_calc_tuple_rd_resp_data          )
+        ,.tuple_proto_calc_rd_resp_data         (tuple_proto_calc_rd_resp_data          )
     
         ,.ctrl_datap_store_flowid               (ctrl_datap_store_flowid                )
         ,.ctrl_datap_store_state                (ctrl_datap_store_state                 )
@@ -130,6 +133,7 @@ import tcp_pkg::*;
         ,.datap_ctrl_produce_pkt                (datap_ctrl_produce_pkt                 )
     
         ,.proto_calc_tx_pkt_hdr                 (tx_pkt_hdr                             )
+        ,.proto_calc_tx_flowid                  (tx_pkt_flowid                          )
         ,.proto_calc_tx_src_ip_addr             (tx_pkt_src_ip_addr                     )
         ,.proto_calc_tx_dst_ip_addr             (tx_pkt_dst_ip_addr                     )
         ,.proto_calc_tx_payload                 (tx_pkt_payload                         )
@@ -140,7 +144,7 @@ import tcp_pkg::*;
         ,.rst   (rst    )
     
         ,.sched_tx_req_val                      (sched_tx_req_val                       )
-        ,.sched_tx_req_rdy                      (sched_tx_req_rdy                       )
+        ,.tx_sched_req_rdy                      (tx_sched_req_rdy                       )
                                                                                         
         ,.sched_tx_update_val                   (proto_calc_tx_sched_update_val         )
         ,.sched_tx_update_rdy                   (tx_sched_proto_calc_update_rdy         )
@@ -151,20 +155,20 @@ import tcp_pkg::*;
         ,.tx_tail_ptr_tx_pipe_rd_resp_val       (tx_tail_ptr_tx_pipe_rd_resp_val        )
         ,.tx_pipe_tx_tail_ptr_rd_resp_rdy       (tx_pipe_tx_tail_ptr_rd_resp_rdy        )
                                                                                         
-        ,.proto_calc_curr_tx_state_rd_req_val   (proto_calc_curr_tx_state_rd_req_val    )
-        ,.proto_calc_curr_tx_state_rd_req_rdy   (proto_calc_curr_tx_state_rd_req_rdy    )
+        ,.proto_calc_curr_tx_state_rd_req_val   (tx_pipe_tx_state_rd_req_val            )
+        ,.proto_calc_curr_tx_state_rd_req_rdy   (tx_state_tx_pipe_rd_req_rdy            )
                                                                                         
-        ,.proto_calc_curr_tx_state_rd_resp_val  (proto_calc_curr_tx_state_rd_resp_val   )
-        ,.proto_calc_curr_tx_state_rd_resp_rdy  (proto_calc_curr_tx_state_rd_resp_rdy   )
+        ,.proto_calc_curr_tx_state_rd_resp_val  (tx_state_tx_pipe_rd_resp_val           )
+        ,.proto_calc_curr_tx_state_rd_resp_rdy  (tx_pipe_tx_state_rd_resp_rdy           )
+                                                 
+        ,.proto_calc_next_tx_state_wr_req_val   (tx_pipe_tx_state_wr_req_val            )
+        ,.proto_calc_next_tx_state_wr_req_rdy   (tx_state_tx_pipe_wr_req_rdy            )
                                                                                         
-        ,.proto_calc_next_tx_state_wr_req_val   (proto_calc_next_tx_state_wr_req_val    )
-        ,.proto_calc_next_tx_state_wr_req_rdy   (proto_calc_next_tx_state_wr_req_rdy    )
-                                                                                        
-        ,.proto_calc_rx_state_rd_req_val        (proto_calc_rx_state_rd_req_val            )
-        ,.rx_state_proto_calc_rd_req_rdy        (rx_state_proto_calc_rd_req_rdy            )
+        ,.proto_calc_rx_state_rd_req_val        (proto_calc_rx_state_rd_req_val         )
+        ,.rx_state_proto_calc_rd_req_rdy        (rx_state_proto_calc_rd_req_rdy         )
                                                                                      
-        ,.rx_state_proto_calc_rd_resp_val       (rx_state_proto_calc_rd_resp_val           )
-        ,.proto_calc_rx_state_rd_resp_rdy       (proto_calc_rx_state_rd_resp_rdy           )
+        ,.rx_state_proto_calc_rd_resp_val       (rx_state_proto_calc_rd_resp_val        )
+        ,.proto_calc_rx_state_rd_resp_rdy       (proto_calc_rx_state_rd_resp_rdy        )
                                                                                         
         ,.proto_calc_tuple_rd_req_val           (proto_calc_tuple_rd_req_val            )
         ,.tuple_proto_calc_rd_req_rdy           (tuple_proto_calc_rd_req_rdy            )
@@ -184,8 +188,8 @@ import tcp_pkg::*;
     );
     
     ram_1r1w_sync_backpressure #(
-         .width_p   (FLOW_LOOKUP_ENTRY_W)
-        ,.els_p     (MAX_FLOW_CNT)
+         .width_p   (FOUR_TUPLE_STRUCT_W    )
+        ,.els_p     (MAX_TCP_FLOWS          )
     ) flowid_to_addr_mem (
          .clk(clk)
         ,.rst(rst)
@@ -277,3 +281,4 @@ import tcp_pkg::*;
     );
 
 endmodule
+

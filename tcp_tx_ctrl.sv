@@ -5,7 +5,7 @@ import tcp_pkg::*;
     ,input rst
 
     ,input  logic           sched_tx_req_val
-    ,output logic           sched_tx_req_rdy
+    ,output logic           tx_sched_req_rdy
 
     ,output logic           sched_tx_update_val
     ,input  logic           sched_tx_update_rdy
@@ -42,6 +42,8 @@ import tcp_pkg::*;
     ,output logic           ctrl_datap_store_calc
     ,output logic           ctrl_datap_store_tuple
 
+    ,input  logic           datap_ctrl_produce_pkt
+
     ,output logic           proto_calc_tx_pkt_val
     ,input  logic           proto_calc_tx_pkt_rdy
 );
@@ -71,10 +73,10 @@ import tcp_pkg::*;
     end
 
     always_comb begin
-        sched_tx_req_rdy = 1'b0;
+        tx_sched_req_rdy = 1'b0;
         ctrl_datap_store_flowid = 1'b0;
         ctrl_datap_store_state = 1'b0;
-        ctrl_datap_save_calcs = 1'b0;
+        ctrl_datap_store_calc = 1'b0;
 
         tx_pipe_tx_tail_ptr_rd_req_val = 1'b0;
         tx_pipe_tx_tail_ptr_rd_resp_rdy = 1'b0;
@@ -82,15 +84,22 @@ import tcp_pkg::*;
         proto_calc_curr_tx_state_rd_req_val = 1'b0;
         proto_calc_curr_tx_state_rd_resp_rdy = 1'b0;
 
+        proto_calc_next_tx_state_wr_req_val = 1'b0;
+
         proto_calc_rx_state_rd_req_val = 1'b0;
         proto_calc_rx_state_rd_resp_rdy = 1'b0;
 
+        proto_calc_tuple_rd_req_val = 1'b0;
+        proto_calc_tuple_rd_resp_rdy = 1'b0;
+
         proto_calc_tx_pkt_val = 1'b0;
+
+        sched_tx_update_val = 1'b0;
 
         state_next = state_reg;
         case (state_reg)
             READ_SCHED: begin
-                sched_tx_req_rdy = 1'b1;
+                tx_sched_req_rdy = 1'b1;
                 ctrl_datap_store_flowid = 1'b1;
 
                 if (sched_tx_req_val) begin
@@ -102,7 +111,7 @@ import tcp_pkg::*;
                 proto_calc_rx_state_rd_req_val = 1'b1;
                 tx_pipe_tx_tail_ptr_rd_req_val = 1'b1;
 
-                proto_calc_curr_tx_state_rd_resp_val = 1'b1;
+                proto_calc_curr_tx_state_rd_resp_rdy = 1'b1;
                 proto_calc_rx_state_rd_resp_rdy = 1'b1;
                 tx_pipe_tx_tail_ptr_rd_resp_rdy = 1'b1;
 
@@ -126,16 +135,22 @@ import tcp_pkg::*;
                 end
             end
             CALC: begin
-                ctrl_datap_save_calcs = 1'b1;
+                ctrl_datap_store_calc = 1'b1;
                 ctrl_datap_store_tuple = 1'b1;
+                proto_calc_tuple_rd_resp_rdy = 1'b1;
 
                 if (tuple_proto_calc_rd_resp_val) begin
-                    state_next = WRITEBACK;
+                    state_next = PKT_OUT;
                 end
             end
             PKT_OUT: begin
-                proto_calc_tx_pkt_val = 1'b1;
-                if (proto_calc_tx_pkt_rdy) begin
+                proto_calc_tx_pkt_val = datap_ctrl_produce_pkt;
+                if (datap_ctrl_produce_pkt) begin
+                    if (proto_calc_tx_pkt_rdy) begin
+                        state_next = WRITEBACK;
+                    end
+                end
+                else begin
                     state_next = WRITEBACK;
                 end
             end
@@ -147,7 +162,7 @@ import tcp_pkg::*;
                 end
             end
             SCHED_UPDATE: begin
-                sched_tx_req_val = 1'b1;
+                sched_tx_update_val = 1'b1;
                 if (sched_tx_update_rdy) begin
                     state_next = READ_SCHED;
                 end

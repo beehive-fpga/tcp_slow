@@ -7,7 +7,7 @@ import tcp_misc_pkg::*;
     ,input rst
 
     ,input  logic                       new_flow_val
-    ,input  logic                       new_flow_flowid
+    ,input  logic   [FLOWID_W-1:0]      new_flow_flowid
     ,input  logic   [`ACK_NUM_W-1:0]    new_flow_our_ack_num
 
     ,output logic                       tx_timeout_rx_state_rd_req_val
@@ -24,13 +24,13 @@ import tcp_misc_pkg::*;
 );
 
     typedef enum logic [2:0] {
-        FIND_NEXT = 2'd0,
-        RD_ACK_STATE = 2'd1,
-        STORE_ACK_STATE = 2'd2,
-        RD_TIMER = 2'd3,
-        COMPUTE = 2'd4,
-        WRITE_SCHED = 2'd5,
-        WRITE_STATE = 2'd6,
+        FIND_NEXT = 3'd0,
+        RD_ACK_STATE = 3'd1,
+        STORE_ACK_STATE = 3'd2,
+        RD_TIMER = 3'd3,
+        COMPUTE = 3'd4,
+        WRITE_SCHED = 3'd5,
+        WRITE_STATE = 3'd6,
         UND = 'X
     } state_e;
 
@@ -104,6 +104,7 @@ import tcp_misc_pkg::*;
             timestamp_reg <= timestamp_reg + 1'b1;
             rx_state_reg <= rx_state_next;
             sched_cmd_reg <= sched_cmd_next;
+            next_state_reg <= next_state_next;
         end
     end
 
@@ -119,7 +120,7 @@ import tcp_misc_pkg::*;
 
     assign ram_rdy = ~new_flow_val;
 
-    assign rd_addr_a = bitvec_index_reg;
+    assign rd_state_addr = bitvec_index_reg;
 
     timeout_state_struct new_state;
     assign new_state.timestamp = timestamp_reg +  RT_TIMEOUT_CYCLES;
@@ -143,20 +144,26 @@ import tcp_misc_pkg::*;
     always_comb begin
         sched_cmd = '0;
         sched_cmd.flowid = bitvec_index_reg;
-        sched_cmd.ack_pend_set_clear = NOP;
-        sched_cmd.data_pend_set_clear = NOP;
+        sched_cmd.ack_pend_set_clear.cmd = NOP;
+        sched_cmd.ack_pend_set_clear.timestamp = '0;
+        sched_cmd.data_pend_set_clear.cmd = NOP;
+        sched_cmd.data_pend_set_clear.timestamp = '0;
 
-        if (timer_exp) begin
-            sched_cmd.rt_pend_set_clear = SET;
-        end
+        sched_cmd.rt_pend_set_clear.timestamp = '0;
+        sched_cmd.rt_pend_set_clear.cmd = timer_exp 
+                                    ? SET
+                                    : NOP;
     end
 
     always_comb begin
-        next_state = '0;
+        next_state = rd_state_data;
         next_state.last_seen_ack = rx_state_reg.our_ack_state.ack_num;
 
         if (rd_state_data.last_seen_ack != rx_state_reg.our_ack_state.ack_num) begin
             next_state.timestamp = timestamp_reg;
+        end
+        else begin
+            next_state.timestamp = rd_state_data.timestamp;
         end
     end
 
@@ -198,10 +205,14 @@ import tcp_misc_pkg::*;
 
     // control stuff
     always_comb begin
+        rd_state_val = 1'b0;
         store_rx_state = 1'b0;
         incr_bitvec_index = 1'b0;
         tx_timeout_rx_state_rd_req_val = 1'b0;
         tx_timeout_rx_state_rd_resp_rdy = 1'b0;
+        tx_timeout_tx_sched_cmd_val = 1'b0;
+        update_state_val = 1'b0;
+        store_calc = 1'b0;
         state_next = state_reg;
         case (state_reg)
             FIND_NEXT: begin
@@ -215,7 +226,7 @@ import tcp_misc_pkg::*;
             RD_ACK_STATE: begin
                 tx_timeout_rx_state_rd_req_val = 1'b1;
                 if (rx_state_tx_timeout_rd_req_rdy) begin
-                    state_next = RD_TIMER;
+                    state_next = STORE_ACK_STATE;
                 end
             end
             STORE_ACK_STATE: begin

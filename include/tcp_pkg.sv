@@ -12,12 +12,21 @@ package tcp_pkg;
     localparam RX_PAYLOAD_PTR_W = PAYLOAD_BUF_PTR_W;
     localparam TX_PAYLOAD_PTR_W = PAYLOAD_BUF_PTR_W;
 
+    localparam RT_ACK_THRESHOLD = 3;
+    localparam RT_ACK_THRESHOLD_W = $clog2(RT_ACK_THRESHOLD) + 1;;
+
     localparam PAYLOAD_ENTRY_ADDR_W = 32;
     localparam PAYLOAD_ENTRY_LEN_W = 16;
     typedef struct packed {
         logic   [PAYLOAD_ENTRY_ADDR_W-1:0]  payload_addr;
         logic   [PAYLOAD_ENTRY_LEN_W-1:0]   payload_len;
     } smol_payload_buf_struct;
+    localparam SMOL_PAYLOAD_BUF_STRUCT_W = $bits(smol_payload_buf_struct);
+
+    typedef struct packed {
+        logic   [`ACK_NUM_W-1:0]    ack_num;
+        logic   [DUP_ACK_CNT_W-1:0] dup_ack_cnt;
+    } ack_state_struct;
 
     typedef struct packed {
         ack_state_struct            our_ack_state;
@@ -37,11 +46,7 @@ package tcp_pkg;
         logic                       timer_armed;
     } tx_ack_timer_struct;
 
-    typedef struct packed {
-        logic   [`ACK_NUM_W-1:0]    ack_num;
-        logic   [DUP_ACK_CNT_W-1:0] dup_ack_cnt;
-    } ack_state_struct;
-
     // 1 second
     localparam RT_TIMEOUT_CYCLES = 250000000;
+
 endpackage
