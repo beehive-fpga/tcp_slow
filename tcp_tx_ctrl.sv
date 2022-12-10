@@ -77,6 +77,7 @@ import tcp_pkg::*;
         ctrl_datap_store_flowid = 1'b0;
         ctrl_datap_store_state = 1'b0;
         ctrl_datap_store_calc = 1'b0;
+        ctrl_datap_store_tuple = 1'b0;
 
         tx_pipe_tx_tail_ptr_rd_req_val = 1'b0;
         tx_pipe_tx_tail_ptr_rd_resp_rdy = 1'b0;

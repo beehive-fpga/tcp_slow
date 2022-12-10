@@ -45,8 +45,27 @@ package tcp_pkg;
         logic   [TIMESTAMP_W-1:0]   timestamp;
         logic                       timer_armed;
     } tx_ack_timer_struct;
+    
+    typedef struct packed {
+        logic   [FLOWID_W-1:0]  flowid;
+        logic                   accept_payload;
+        payload_buf_struct      payload_entry;
+    } rx_store_buf_q_struct;
+    localparam RX_STORE_BUF_Q_STRUCT_W = $bits(rx_store_buf_q_struct);
 
     // 1 second
     localparam RT_TIMEOUT_CYCLES = 250000000;
+    
+    localparam RX_TMP_BUF_NUM_SLABS = 10;
+    localparam RX_TMP_BUF_SLAB_NUM_W = $clog2(RX_TMP_BUF_NUM_SLABS);
+    localparam RX_TMP_BUF_SLAB_BYTES = 2048;
+    localparam RX_TMP_BUF_SLAB_BYTES_W = $clog2(RX_TMP_BUF_SLAB_BYTES);
+
+    // some nice log trick math
+    localparam RX_TMP_BUF_ADDR_W = (RX_TMP_BUF_SLAB_NUM_W + RX_TMP_BUF_SLAB_BYTES_W);
+    // calculate the number of bytes available across all slabs and then divide by the number of bytes 
+    // in the MAC data interface to get els needed in the memory
+    localparam RX_TMP_BUF_MEM_ELS = ((RX_TMP_BUF_NUM_SLABS * RX_TMP_BUF_SLAB_BYTES)/(`MAC_INTERFACE_BYTES));
+    localparam RX_TMP_BUF_MEM_ADDR_W = $clog2(RX_TMP_BUF_MEM_ELS);
 
 endpackage

@@ -87,10 +87,6 @@ import packet_struct_pkg::*;
     ,input          [TX_PAYLOAD_PTR_W:0]        app_tx_tail_ptr_wr_req_data
     ,output                                     tx_tail_ptr_app_wr_req_rdy
     
-    ,input  logic                               app_sched_update_val
-    ,input  sched_cmd_struct                    app_sched_update_cmd
-    ,output logic                               sched_app_update_rdy
-    
     ,input                                      app_tx_tail_ptr_rd_req_val
     ,input          [FLOWID_W-1:0]              app_tx_tail_ptr_rd_req_addr
     ,output logic                               tx_tail_ptr_app_rd_req_rdy
@@ -99,6 +95,11 @@ import packet_struct_pkg::*;
     ,output logic   [FLOWID_W-1:0]              tx_tail_ptr_app_rd_resp_flowid
     ,output logic   [TX_PAYLOAD_PTR_W:0]        tx_tail_ptr_app_rd_resp_data
     ,input  logic                               app_tx_tail_ptr_rd_resp_rdy
+    
+    ,input  logic                               app_sched_update_val
+    ,input  sched_cmd_struct                    app_sched_update_cmd
+    ,output logic                               sched_app_update_rdy
+    
 );
     
     logic                           curr_rx_state_rd_req_val;
