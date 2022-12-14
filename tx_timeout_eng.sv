@@ -52,8 +52,6 @@ import tcp_misc_pkg::*;
     logic   [FLOWID_W-1:0]      wr_state_addr;
     
     logic                       update_state_val;
-    timeout_state_struct        update_state_data;
-    logic   [FLOWID_W-1:0]      update_state_addr;
 
     logic                       rd_state_val;
     logic   [FLOWID_W-1:0]      rd_state_addr;
@@ -160,7 +158,7 @@ import tcp_misc_pkg::*;
         next_state.last_seen_ack = rx_state_reg.our_ack_state.ack_num;
 
         if (rd_state_data.last_seen_ack != rx_state_reg.our_ack_state.ack_num) begin
-            next_state.timestamp = timestamp_reg;
+            next_state.timestamp = timestamp_reg + RT_TIMEOUT_CYCLES;
         end
         else begin
             next_state.timestamp = rd_state_data.timestamp;
@@ -247,9 +245,14 @@ import tcp_misc_pkg::*;
                 state_next = WRITE_SCHED;
             end
             WRITE_SCHED: begin
-                tx_timeout_tx_sched_cmd_val = 1'b1;
-                if (tx_sched_tx_timeout_cmd_rdy) begin
-                    state_next = WRITE_STATE;;
+                if (sched_cmd_reg.rt_pend_set_clear.cmd == SET) begin
+                    tx_timeout_tx_sched_cmd_val = 1'b1;
+                    if (tx_sched_tx_timeout_cmd_rdy) begin
+                        state_next = WRITE_STATE;
+                    end
+                end
+                else begin
+                    state_next = WRITE_STATE;
                 end
             end
             WRITE_STATE: begin

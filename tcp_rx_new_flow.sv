@@ -61,6 +61,7 @@ import packet_struct_pkg::*;
         app_flow_notif_val = 1'b0;
         slow_path_done_val = 1'b0;
         slow_path_store_flowid = 1'b0;
+        flowid_manager_req = 1'b0;
 
         drop_pkt_next = drop_pkt_reg;
         state_next = state_reg;
@@ -80,6 +81,7 @@ import packet_struct_pkg::*;
             end
             NEW_FLOWID: begin
                 if (flowid_avail) begin
+                    flowid_manager_req = 1'b1;
                     slow_path_store_flowid = 1'b1;
                     state_next = INIT_STATE;
                 end

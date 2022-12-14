@@ -1,4 +1,5 @@
 package tcp_pkg;
+    `include "soc_defs.vh"
 
     localparam DUP_ACK_CNT_W = 4;
     localparam DUP_ACK_RT = 3;
@@ -56,7 +57,7 @@ package tcp_pkg;
     // 1 second
     localparam RT_TIMEOUT_CYCLES = 250000000;
     
-    localparam RX_TMP_BUF_NUM_SLABS = 10;
+    localparam RX_TMP_BUF_NUM_SLABS = 16;
     localparam RX_TMP_BUF_SLAB_NUM_W = $clog2(RX_TMP_BUF_NUM_SLABS);
     localparam RX_TMP_BUF_SLAB_BYTES = 2048;
     localparam RX_TMP_BUF_SLAB_BYTES_W = $clog2(RX_TMP_BUF_SLAB_BYTES);

@@ -171,7 +171,7 @@ class HWEchoMimic(AppIFMimic):
             except SimTimeoutError:
                 continue
             self.active_flows.append(flow_notif_data)
-            cocotb.log.info("Got new flow")
+            cocotb.log.info(f"Got new flow {flow_notif_data['flowid']}")
         cocotb.log.info("Flow notif coroutine exiting")
 
     async def parallel_rd_resp(self, op, value_event):
@@ -231,10 +231,12 @@ class HWEchoMimic(AppIFMimic):
             if len(self.active_flows) != 0:
                 flow_data = self.active_flows.popleft()
                 flowid = flow_data["flowid"]
+                cocotb.log.info(f"Beehive: app mimic scheduled flow {flowid}")
 
                 space_used = 0
                 while space_used < self.hdr_bytes:
                     space_used = await self.get_space_used(flowid)
+                    cocotb.log.info(f"Beehive: app RX space used: {space_used}")
 
                 hdr_data = self.rx_circ_bufs[flowid].read_from(self.rx_head_ptr_bitfield.to_addr(),
                         self.hdr_bytes)
@@ -247,7 +249,7 @@ class HWEchoMimic(AppIFMimic):
                         byteorder="big")
                 is_done = hdr_data[self.client_len_bytes*2]
 
-                cocotb.log.info(f"Got app header. req_len: {rd_len}, resp_len: "
+                cocotb.log.info(f"Got app header for flow {flowid}. req_len: {rd_len}, resp_len: "
                         f"{resp_len}")
 
                 # alright now wait for the payload
@@ -296,7 +298,7 @@ class HWEchoMimic(AppIFMimic):
                 if is_done == 0:
                     self.active_flows.append(flow_data)
                 else:
-                    cocotb.log.info("App mimic flow finished")
+                    cocotb.log.info(f"App mimic flow {flowid} finished")
             else:
                 await RisingEdge(self.clk)
 
@@ -348,9 +350,10 @@ class payloadPtrBitfield(bitfield):
     wrapping/overflow
     """
     def sub(self, other):
+        print(f"other.value {other.value}, self.value {self.value}")
         if other.value > self.value:
             max_val = 1 << self.num_ptr_w
-            diff = other.value - self.value
+            diff = other.to_addr() - self.to_addr()
             return max_val - diff
         else:
             return self.value - other.value
@@ -377,7 +380,7 @@ class TCPSlowTB():
         }
         self.MAC_W = 512
 
-        self.TCP_driver = TCPAutomatonDriver(1, EchoGenerator, (self.MAC_W,
+        self.TCP_driver = TCPAutomatonDriver(8, EchoGenerator, (self.MAC_W,
             1024, 64, 2),
                 dut.clk)
 

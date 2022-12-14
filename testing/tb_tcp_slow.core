@@ -6,6 +6,7 @@ filesets:
         files:
             - tb_tcp_slow.sv
         depend:
+            - uwcse:buckfast:includes
             - uwcse:beehive:common_inc
             - uwcse:beehive:tcp_engine
         file_type: systemVerilogSource

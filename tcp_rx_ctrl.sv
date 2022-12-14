@@ -108,6 +108,8 @@ module tcp_rx_ctrl (
         rx_pipe_rx_head_ptr_rd_resp_rdy = 1'b0;
         rx_pipe_rx_tail_ptr_rd_resp_rdy = 1'b0;
 
+        next_rx_state_wr_req_val = 1'b0;
+
         rx_hdr_rdy = 1'b0;
 
         slow_path_val = 1'b0;

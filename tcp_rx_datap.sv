@@ -262,14 +262,13 @@ import packet_struct_pkg::*;
 
         rx_sched_update_cmd.ack_pend_set_clear.timestamp = '0;
         rx_sched_update_cmd.data_pend_set_clear.timestamp = '0;
+        rx_sched_update_cmd.data_pend_set_clear.cmd = NOP;
 
-        if (accept_payload_reg & (payload_entry_reg.payload_len > '0)) begin
+        if (accept_payload_reg && (payload_entry_reg != 0)) begin
             rx_sched_update_cmd.ack_pend_set_clear.cmd = SET;
-            rx_sched_update_cmd.data_pend_set_clear.cmd = SET;
         end
         else begin
             rx_sched_update_cmd.ack_pend_set_clear.cmd = NOP;
-            rx_sched_update_cmd.data_pend_set_clear.cmd = NOP;
         end
     end
 

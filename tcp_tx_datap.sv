@@ -213,15 +213,12 @@ import packet_struct_pkg::*;
         update_cmd.ack_pend_set_clear.timestamp = sched_data_reg.ack_pend_flag.timestamp;
         update_cmd.ack_pend_set_clear.cmd = CLEAR;
 
-        // FIXME: if we've emptied the last of the data from the buffer, clear that there's data pending,
-        // but we need to be careful not to clear it if the app has set it while we've been processing.
-        // For now, don't clear
         update_cmd.data_pend_set_clear.timestamp = sched_data_reg.data_pend_flag.timestamp;
-        update_cmd.data_pend_set_clear.cmd = NOP;
+        update_cmd.data_pend_set_clear.cmd = CLEAR;
     end
 
     // since we can't count on the data pending flag, we need to check if the payload actually has length.
-    assign datap_ctrl_produce_pkt = sched_data_reg.rt_flag | sched_data_reg.ack_pend_flag | 
+    assign datap_ctrl_produce_pkt = sched_data_reg.rt_flag.flag | sched_data_reg.ack_pend_flag.flag | 
                                     (payload_desc_reg.payload_len != 0);
 
     tcp_hdr_assembler hdr_assembler (
