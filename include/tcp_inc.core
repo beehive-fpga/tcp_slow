@@ -1,0 +1,13 @@
+CAPI=2:
+name: uwcse:beehive:tcp_inc:0.1
+description: Includes for the TCP implementation
+filesets:
+    rtl:
+        files:
+            - tcp_pkg.sv
+            - tcp_misc_pkg.sv
+        file_type: systemVerilogSource
+
+targets:
+    default:
+        filesets: [rtl]

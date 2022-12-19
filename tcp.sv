@@ -478,7 +478,7 @@ import packet_struct_pkg::*;
 
     ram_2r1w_sync_backpressure #(
          .width_p   (SMOL_RX_STATE_STRUCT_W )
-        ,.els_p     (MAX_TCP_FLOWS          )
+        ,.els_p     (MAX_FLOW_CNT           )
     ) rx_state_store (
          .clk   (clk    )
         ,.rst   (rst    )
@@ -525,8 +525,8 @@ import packet_struct_pkg::*;
     );
     
     ram_2r1w_sync_backpressure #(
-         .width_p   (SMOL_TX_STATE_STRUCT_W  )
-        ,.els_p     (MAX_TCP_FLOWS      )
+         .width_p   (SMOL_TX_STATE_STRUCT_W )
+        ,.els_p     (MAX_FLOW_CNT           )
     ) tx_state_store (
          .clk   (clk    )
         ,.rst   (rst    )

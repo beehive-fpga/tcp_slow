@@ -189,7 +189,7 @@ import packet_struct_pkg::*;
     
     ram_1r1w_sync_backpressure #(
          .width_p   (FOUR_TUPLE_STRUCT_W    )
-        ,.els_p     (MAX_TCP_FLOWS          )
+        ,.els_p     (MAX_FLOW_CNT           )
     ) flowid_to_addr_mem (
          .clk(clk)
         ,.rst(rst)

@@ -324,7 +324,7 @@ import tcp_misc_pkg::*;
     // State holding modules
     ram_2r1w_sync_backpressure #(
          .width_p   (SCHED_DATA_STRUCT_W    )
-        ,.els_p     (MAX_TCP_FLOWS          )
+        ,.els_p     (MAX_FLOW_CNT           )
     ) sched_state_mem (
          .clk   (clk    )
         ,.rst   (rst    )

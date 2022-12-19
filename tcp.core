@@ -4,8 +4,6 @@ description: An implementation of TCP
 filesets:
     rtl:
         files:
-            - include/tcp_pkg.sv
-            - include/tcp_misc_pkg.sv
             - flowid_manager.sv
             - mem_mux.sv
             - new_state_mux.sv
@@ -14,6 +12,7 @@ filesets:
             - rr_sched_engine.sv
             - rx_buf_ptrs.sv
             - sched_cmd_flag_update.sv
+            - sched_req_fill.sv
             - seg_size_calc.sv
             - send_pkt_mux.sv
             - tcp.sv

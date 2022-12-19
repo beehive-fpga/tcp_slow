@@ -6,12 +6,12 @@ package tcp_pkg;
 
     localparam TIMESTAMP_W = 64;
 
-    localparam MAX_TCP_FLOWS = 8;
-    localparam FLOWID_W = $clog2(MAX_TCP_FLOWS);
+    localparam MAX_FLOW_CNT = 8;
+    localparam FLOWID_W = $clog2(MAX_FLOW_CNT);
 
-    localparam PAYLOAD_BUF_PTR_W = 12;
-    localparam RX_PAYLOAD_PTR_W = PAYLOAD_BUF_PTR_W;
-    localparam TX_PAYLOAD_PTR_W = PAYLOAD_BUF_PTR_W;
+    localparam PAYLOAD_PTR_W = 12;
+    localparam RX_PAYLOAD_PTR_W = PAYLOAD_PTR_W;
+    localparam TX_PAYLOAD_PTR_W = PAYLOAD_PTR_W;
 
     localparam RT_ACK_THRESHOLD = 3;
     localparam RT_ACK_THRESHOLD_W = $clog2(RT_ACK_THRESHOLD) + 1;;

@@ -290,11 +290,11 @@ import packet_struct_pkg::*;
         ,.slow_path_send_pkt_enqueue_dst_ip (rx_send_pkt_enq_dst_ip             )
     );
 
-    logic   [MAX_TCP_FLOWS-1:0] cam_wr_val;
+    logic   [MAX_FLOW_CNT-1:0] cam_wr_val;
     assign cam_wr_val = {{(FLOWID_W-1){1'b0}}, new_flow_val} << new_flow_flow_id;
     
     bsg_cam_1r1w_unmanaged #(
-         .els_p         (MAX_TCP_FLOWS          )  
+         .els_p         (MAX_FLOW_CNT           )  
         ,.tag_width_p   (FOUR_TUPLE_STRUCT_W    )
         ,.data_width_p  (FLOWID_W               )
     ) addr_to_flowid (

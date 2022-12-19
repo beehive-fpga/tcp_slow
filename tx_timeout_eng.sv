@@ -44,8 +44,8 @@ import tcp_misc_pkg::*;
     state_e state_reg;
     state_e state_next;
 
-    logic   [MAX_TCP_FLOWS-1:0] active_bitvec_reg;
-    logic   [MAX_TCP_FLOWS-1:0] active_bitvec_next;
+    logic   [MAX_FLOW_CNT-1:0] active_bitvec_reg;
+    logic   [MAX_FLOW_CNT-1:0] active_bitvec_next;
 
     logic                       wr_state_val;
     timeout_state_struct        wr_state_data;
@@ -111,7 +111,7 @@ import tcp_misc_pkg::*;
                             : rx_state_reg;
 
     assign bitvec_index_next = incr_bitvec_index
-                            ? bitvec_index_reg == (MAX_TCP_FLOWS - 1)
+                            ? bitvec_index_reg == (MAX_FLOW_CNT - 1)
                                 ? '0
                                 : bitvec_index_reg + 1'b1
                             : bitvec_index_reg;
@@ -186,7 +186,7 @@ import tcp_misc_pkg::*;
     
     ram_1r1w_sync #(
          .DATA_W    (TIMEOUT_STATE_STRUCT_W )
-        ,.DEPTH     (MAX_TCP_FLOWS          )
+        ,.DEPTH     (MAX_FLOW_CNT           )
     ) timeout_state (
          .clk   (clk    )
         ,.rst   (rst    )
