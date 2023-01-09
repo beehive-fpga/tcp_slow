@@ -228,6 +228,7 @@ import packet_struct_pkg::*;
         ,.seq_num               (pkt_seq_num                        )
         ,.ack_num               (curr_rx_state_reg.their_ack_num    )
         ,.flags                 (`TCP_ACK | `TCP_PSH                )
+        ,.window                (curr_rx_state_reg.our_win_size     )
         ,.tcp_hdr_req_rdy       ()
     
         ,.outbound_tcp_hdr_val  ()

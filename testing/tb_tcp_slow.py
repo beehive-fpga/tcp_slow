@@ -24,24 +24,13 @@ sys.path.append(os.environ["BEEHIVE_PROJECT_ROOT"] + "/cocotb_testing/common/")
 
 from tcp_driver import TCPFourTuple
 from generic_val_rdy import GenericValRdyBus, GenericValRdySource, GenericValRdySink
-from tcp_slow_test_utils import TCPSlowTB, PayloadBufStruct, payloadPtrBitfield
-
-async def reset(dut):
-    dut.rst.setimmediatevalue(0)
-    await RisingEdge(dut.clk)
-    await RisingEdge(dut.clk)
-    dut.rst.value = 1
-    await RisingEdge(dut.clk)
-    await RisingEdge(dut.clk)
-    dut.rst.value = 0
-    await RisingEdge(dut.clk)
-    await RisingEdge(dut.clk)
+from tcp_slow_test_utils import TCPSlowTB, PayloadBufStruct
+from tcp_slow_test_utils import payloadPtrBitfield, reset
 
 @cocotb.test()
 async def run_tcp_test(dut):
     tb = TCPSlowTB(dut)
     cocotb.start_soon(Clock(dut.clk, 4, units='ns').start())
-
 
     await reset(dut)
     # start up all the hw mimic tasks
@@ -78,36 +67,8 @@ async def run_send_loop(dut, tb, timer_queue):
             if timer is not None:
                 await timer_queue.put(timer)
 
-            # get just the TCP portion
-            tcp_hdr = pkt_to_send["TCP"].copy()
-            tcp_hdr.remove_payload()
-            cocotb.log.info(f"TCP packet is {tcp_hdr.show(dump=True)}")
+            await tb.input_op.xmit_frame(pkt_to_send)
 
-            payload_struct = PayloadBufStruct(addr=0, size=0)
-            if "Raw" in pkt_to_send:
-                payload = pkt_to_send["Raw"].load
-                # wait until we have somewhere to put the payload
-                (avail, slab_index) = tb.tmp_buf.get_slab()
-                while not avail:
-                    await RisingEdge(dut.clk)
-                    (avail, slab_index) = tb.tmp_buf.get_slab()
-
-                tb.tmp_buf.write_slab(slab_index, payload)
-                payload_struct.setField("addr", slab_index)
-                payload_struct.setField("size", len(payload))
-            payload_size = payload_struct.getField("size")
-
-            cocotb.log.info(f"Payload entry is {payload_struct}")
-            tcp_hdr_bytes = bytes(tcp_hdr.build())
-            payload_struct_bytes = payload_struct.toBinaryValue()
-            src_ip = socket.inet_aton(pkt_to_send["IP"].src)
-            dst_ip = socket.inet_aton(pkt_to_send["IP"].dst)
-
-            await tb.rx_pkt_in_op.send_req(
-                    {"src_ip": BinaryValue(value=src_ip, n_bits=32),
-                     "dst_ip": BinaryValue(value=dst_ip, n_bits=32),
-                     "tcp_hdr": BinaryValue(value=tcp_hdr_bytes),
-                     "payload": payload_struct_bytes})
         else:
             if tb.TCP_driver.all_flows_done():
                 cocotb.log.info("Send loop exiting")
@@ -167,4 +128,5 @@ async def run_recv_loop(dut, tb):
             cocotb.log.info("Recv loop exiting")
             tb.done_event.set()
             return
+
 

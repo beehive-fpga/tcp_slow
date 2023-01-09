@@ -307,13 +307,14 @@ import packet_struct_pkg::*;
     assign slow_path_send_pkt_enqueue_flowid = curr_flowid_reg;
 
     tcp_hdr_assembler hdr_assemble (
-         .tcp_hdr_req_val        (1'b1                              )
-        ,.host_port              (tcp_hdr_reg.dst_port              )
-        ,.dest_port              (tcp_hdr_reg.src_port              )
-        ,.seq_num                (OUR_SEQ_NUM                       )
-        ,.ack_num                (tcp_hdr_reg.seq_num + 1           )
-        ,.flags                  (`TCP_SYN | `TCP_ACK               )
-        ,.tcp_hdr_req_rdy        ()
+         .tcp_hdr_req_val       (1'b1                              )
+        ,.host_port             (tcp_hdr_reg.dst_port              )
+        ,.dest_port             (tcp_hdr_reg.src_port              )
+        ,.seq_num               (OUR_SEQ_NUM                       )
+        ,.ack_num               (tcp_hdr_reg.seq_num + 1           )
+        ,.flags                 (`TCP_SYN | `TCP_ACK               )
+        ,.window                (1 << RX_PAYLOAD_PTR_W)
+        ,.tcp_hdr_req_rdy       ()
 
         ,.outbound_tcp_hdr_val   ()
         ,.outbound_tcp_hdr_rdy   (1'b1)

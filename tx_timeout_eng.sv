@@ -161,7 +161,12 @@ import tcp_misc_pkg::*;
             next_state.timestamp = timestamp_reg + RT_TIMEOUT_CYCLES;
         end
         else begin
-            next_state.timestamp = rd_state_data.timestamp;
+            if (timer_exp) begin
+                next_state.timestamp = timestamp_reg + RT_TIMEOUT_CYCLES;
+            end
+            else begin
+                next_state.timestamp = rd_state_data.timestamp;
+            end
         end
     end
 

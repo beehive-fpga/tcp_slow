@@ -8,6 +8,7 @@ module tcp_hdr_assembler(
     ,input  [`SEQ_NUM_W-1:0]    seq_num
     ,input  [`ACK_NUM_W-1:0]    ack_num
     ,input  [`FLAGS_W-1:0]      flags
+    ,input  [`WIN_SIZE_W-1:0]   window
     ,output                     tcp_hdr_req_rdy
 
     ,output                     outbound_tcp_hdr_val
@@ -39,7 +40,7 @@ always @(*) begin
         outbound_tcp_hdr_struct.reserved = `RESERVED_W'b0;
         outbound_tcp_hdr_struct.urg_pointer = `URG_W'b0;
     
-        outbound_tcp_hdr_struct.win_size = `WIN_SIZE_W'h16_d0;
+        outbound_tcp_hdr_struct.win_size = window;
 
     end
     else begin

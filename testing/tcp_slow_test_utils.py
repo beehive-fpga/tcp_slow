@@ -15,6 +15,17 @@ from bitfields import bitfield, bitfieldManip
 from generic_val_rdy import GenericValRdyBus, GenericValRdySource, GenericValRdySink
 from bitfields import bitfield, bitfieldManip
 
+async def reset(dut):
+    dut.rst.setimmediatevalue(0)
+    await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk)
+    dut.rst.value = 1
+    await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk)
+    dut.rst.value = 0
+    await RisingEdge(dut.clk)
+    await RisingEdge(dut.clk)
+
 class BufCopier():
     def __init__(self, hdr_op, commit_wr_op, commit_rd_req_op,
             commit_rd_resp_op, done_event, rx_circ_bufs, tmp_buf):
@@ -710,4 +721,36 @@ class FourTupleStruct(AbstractStruct):
         }
 
         super().__init__(init_bitstring=init_bitstring)
+
+class SlowInputOp():
+    def __init__(self, input_op):
+        self.input_op = input_op
+
+    async def xmit_frame(self, input_pkt):
+            # get just the TCP portion
+            tcp_hdr = pkt_to_send["TCP"].copy()
+            tcp_hdr.remove_payload()
+            cocotb.log.debug(f"TCP packet is {tcp_hdr.show(dump=True)}")
+
+            payload_struct = PayloadBufStruct(addr=0, size=0)
+            if "Raw" in input_pkt:
+                payload = input_pkt["Raw"].load
+                # wait until we have somewhere to put the payload
+                (avail, slab_index) = tb.tmp_buf.get_slab()
+                while not avail:
+                    await RisingEdge(dut.clk)
+                    (avail, slab_index) = tb.tmp_buf.get_slab()
+
+                tb.tmp_buf.write_slab(slab_index, payload)
+                payload_struct.setField("addr", slab_index)
+                payload_struct.setField("size", len(payload))
+            payload_size = payload_struct.getField("size")
+
+            await self.input_op.send_req(
+                    {"src_ip": BinaryValue(value=src_ip, n_bits=32),
+                     "dst_ip": BinaryValue(value=dst_ip, n_bits=32),
+                     "tcp_hdr": BinaryValue(value=tcp_hdr_bytes),
+                     "payload": payload_struct_bytes})
+
+
 
