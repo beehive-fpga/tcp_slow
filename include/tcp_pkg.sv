@@ -6,10 +6,10 @@ package tcp_pkg;
 
     localparam TIMESTAMP_W = 64;
 
-    localparam MAX_FLOW_CNT = 8;
+    localparam MAX_FLOW_CNT = 16;
     localparam FLOWID_W = $clog2(MAX_FLOW_CNT);
 
-    localparam PAYLOAD_PTR_W = 12;
+    localparam PAYLOAD_PTR_W = 14;
     localparam RX_PAYLOAD_PTR_W = PAYLOAD_PTR_W;
     localparam TX_PAYLOAD_PTR_W = PAYLOAD_PTR_W;
 
@@ -57,9 +57,9 @@ package tcp_pkg;
     // 1 second
     localparam RT_TIMEOUT_CYCLES = 250000000;
     
-    localparam RX_TMP_BUF_NUM_SLABS = 16;
+    localparam RX_TMP_BUF_NUM_SLABS = 2;
     localparam RX_TMP_BUF_SLAB_NUM_W = $clog2(RX_TMP_BUF_NUM_SLABS);
-    localparam RX_TMP_BUF_SLAB_BYTES = 2048;
+    localparam RX_TMP_BUF_SLAB_BYTES = 9152;
     localparam RX_TMP_BUF_SLAB_BYTES_W = $clog2(RX_TMP_BUF_SLAB_BYTES);
 
     // some nice log trick math
