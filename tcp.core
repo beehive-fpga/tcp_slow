@@ -14,6 +14,7 @@ filesets:
             - sched_cmd_flag_update.sv
             - sched_req_fill.sv
             - seg_size_calc.sv
+            - seg_size_calc_w_window.sv
             - send_pkt_mux.sv
             - tcp.sv
             - tcp_hdr_assembler.sv

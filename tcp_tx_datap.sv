@@ -149,21 +149,25 @@ import packet_struct_pkg::*;
     // calculate both possible segment sizes and then decide between them
     
     // for the retransmit segment, calculate from the last ack'ed byte
-    seg_size_calc #(
+    seg_size_calc_w_window #(
         .ptr_w(TX_PAYLOAD_PTR_W)
     ) rt_segment (
-         .trail_ptr (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
-        ,.lead_ptr  (curr_tx_tail_ptr_reg                                           )
-        ,.seg_size  (rt_seg_size                                                    )
+         .trail_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
+        ,.lead_ptr      (curr_tx_tail_ptr_reg                                           )
+        ,.next_send_ptr (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
+        ,.curr_win      (curr_rx_state_reg.our_win_size                                 )
+        ,.seg_size      (rt_seg_size                                                    )
     );
 
     // for the new segment, calculate from the sequence number
-    seg_size_calc #(
+    seg_size_calc_w_window #(
         .ptr_w(TX_PAYLOAD_PTR_W)
     ) new_segment (
-         .trail_ptr  (curr_tx_state_reg.our_seq_num[TX_PAYLOAD_PTR_W:0] )
-        ,.lead_ptr   (curr_tx_tail_ptr_reg                              )
-        ,.seg_size   (new_seg_size                                      )
+         .trail_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
+        ,.lead_ptr      (curr_tx_tail_ptr_reg                                           )
+        ,.next_send_ptr (curr_tx_state_reg.our_seq_num[TX_PAYLOAD_PTR_W:0]              )
+        ,.curr_win      (curr_rx_state_reg.our_win_size                                 )
+        ,.seg_size      (new_seg_size                                                   )
     );
 
     always_comb begin
@@ -220,6 +224,14 @@ import packet_struct_pkg::*;
     // since we can't count on the data pending flag, we need to check if the payload actually has length.
     assign datap_ctrl_produce_pkt = sched_data_reg.rt_flag.flag | sched_data_reg.ack_pend_flag.flag | 
                                     (payload_desc_reg.payload_len != 0);
+
+    logic [`FLAGS_W-1:0]    assembler_flags;
+    logic [`FLAGS_W-1:0]    ack_flag_bit;
+    logic [`FLAGS_W-1:0]    psh_flag_bit;
+
+    assign ack_flag_bit = sched_data_reg.ack_pend_flag.flag << `TCP_ACK_INDEX;
+    assign psh_flag_bit = (payload_desc_reg.payload_len != 0) << `TCP_PSH_INDEX;
+    assign assembler_flags = ack_flag_bit | psh_flag_bit;
 
     tcp_hdr_assembler hdr_assembler (
          .tcp_hdr_req_val       (1'b1   )
