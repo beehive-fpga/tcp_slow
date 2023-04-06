@@ -6,6 +6,8 @@ filesets:
         files:
             - tcp_pkg.sv
             - tcp_misc_pkg.sv
+        depend:
+            - uwcse:beehive:common_inc
         file_type: systemVerilogSource
 
 targets:
