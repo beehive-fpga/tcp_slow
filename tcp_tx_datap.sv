@@ -1,3 +1,4 @@
+`include "packet_defs.vh"
 module tcp_tx_datap
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
@@ -148,6 +149,12 @@ import packet_struct_pkg::*;
    
     // calculate both possible segment sizes and then decide between them
     
+    // never completely close the window as a hack instead of proper zero-window probing...
+    // it's kind of proper, but we don't have a back-off timer basically
+    logic [`WIN_SIZE_W-1:0] their_rx_win = curr_rx_state_reg.their_win_size == 0
+                                        ? 1 
+                                        : curr_rx_state_reg.their_win_size;
+    
     // for the retransmit segment, calculate from the last ack'ed byte
     seg_size_calc_w_window #(
         .ptr_w(TX_PAYLOAD_PTR_W)
@@ -155,7 +162,7 @@ import packet_struct_pkg::*;
          .trail_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
         ,.lead_ptr      (curr_tx_tail_ptr_reg                                           )
         ,.next_send_ptr (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
-        ,.curr_win      (curr_rx_state_reg.our_win_size                                 )
+        ,.curr_win      (their_rx_win                                                   )
         ,.seg_size      (rt_seg_size                                                    )
     );
 
@@ -166,7 +173,7 @@ import packet_struct_pkg::*;
          .trail_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
         ,.lead_ptr      (curr_tx_tail_ptr_reg                                           )
         ,.next_send_ptr (curr_tx_state_reg.our_seq_num[TX_PAYLOAD_PTR_W:0]              )
-        ,.curr_win      (curr_rx_state_reg.our_win_size                                 )
+        ,.curr_win      (their_rx_win                                                   )
         ,.seg_size      (new_seg_size                                                   )
     );
 
