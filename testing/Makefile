@@ -40,9 +40,9 @@ gen_filelist:
 init_fusesoc:
 	echo "[main]" > fusesoc.conf
 	echo "cache_root = $(PWD)" >> fusesoc.conf
-	fusesoc library add tcp_engine $(BEEHIVE_PROJECT_ROOT)/network_tiles/tcp/tcp_slow
-	fusesoc library add basejump_modules $(BEEHIVE_PROJECT_ROOT)/network_tiles/tcp_hw/basejump_files
-	fusesoc library add buckfast_ram $(BEEHIVE_PROJECT_ROOT)/network_tiles/tcp_hw/common
-	fusesoc library add buckfast_includes $(BEEHIVE_PROJECT_ROOT)/network_tiles/tcp_hw/include
+	fusesoc library add tcp_engine $(BEEHIVE_PROJECT_ROOT)/protocols/tcp_slow
+	fusesoc library add basejump_modules $(BEEHIVE_PROJECT_ROOT)/protocols/tcp_hw/basejump_files
+	fusesoc library add buckfast_ram $(BEEHIVE_PROJECT_ROOT)/protocols/tcp_hw/common
+	fusesoc library add buckfast_includes $(BEEHIVE_PROJECT_ROOT)/protocols/tcp_hw/include/common
 	fusesoc library add beehive_includes $(BEEHIVE_PROJECT_ROOT)/include
 	fusesoc library add beehive_util $(BEEHIVE_PROJECT_ROOT)/util

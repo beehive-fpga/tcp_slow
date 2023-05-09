@@ -24,109 +24,103 @@ sys.path.append(os.environ["BEEHIVE_PROJECT_ROOT"] + "/cocotb_testing/common/")
 
 from tcp_driver import TCPFourTuple
 from generic_val_rdy import GenericValRdyBus, GenericValRdySource, GenericValRdySink
-from tcp_slow_test_utils import TCPSlowTB, PayloadBufStruct
-from tcp_slow_test_utils import payloadPtrBitfield, reset
+from tcp_slow_test_structs import PayloadBufStruct
+from tcp_slow_test_utils import reset
+from circ_buf_helpers import payloadPtrBitfield
+from tcp_open_bw_log_read import TCPOpenBwLogRead
+
+import tcp_closed_loop_client
+from tcp_closed_loop_client import TCPClosedLoopTB
+
+import tcp_open_loop_client
+from tcp_open_loop_client import TCPOpenLoopTB
+
+from open_loop_generator import ClientDir
+
+#@cocotb.test()
+#async def run_tcp_test_closed_loop(dut):
+#    tb = TCPClosedLoopTB(dut, 1)
+#    cocotb.start_soon(Clock(dut.clk, tb.CLOCK_CYCLE_TIME, units='ns').start())
+#
+#    await reset(dut)
+#    # start up all the hw mimic tasks
+#    app_flow_notif = cocotb.start_soon(tb.app_mimic.flow_notif())
+#    app_loop = cocotb.start_soon(tb.app_mimic.app_loop())
+#    buf_copy = cocotb.start_soon(tb.buf_cpy_obj.req_loop())
+#
+#    # start up the app tasks
+#    timers = CocoQueue()
+#    send_task = cocotb.start_soon(tcp_closed_loop_client.run_send_loop(dut, tb, timers))
+#    recv_task = cocotb.start_soon(tcp_closed_loop_client.run_recv_loop(dut, tb))
+#    timer_task = cocotb.start_soon(tcp_closed_loop_client.timer_tasks(tb, timers))
+#
+#    await Combine(app_flow_notif, app_loop, buf_copy, send_task, recv_task,
+#            timer_task)
+
+#@cocotb.test()
+async def run_tcp_test_open_loop(dut):
+    DIRECTION = ClientDir.SEND
+    NUM_REQS = 100
+    BUF_SIZE = 128
+    NUM_CONNS = 1
+    tb = TCPOpenLoopTB(dut, NUM_CONNS, DIRECTION, NUM_REQS, BUF_SIZE)
+    cocotb.start_soon(Clock(dut.clk, tb.CLOCK_CYCLE_TIME, units='ns').start())
+    await reset(dut)
+
+    measures = await run_one_bw_test(tb, NUM_CONNS, DIRECTION, NUM_REQS,
+            BUF_SIZE)
+
+    ref_intervals = log_reader.calculate_bws(measures, tb.CLOCK_CYCLE_TIME)
+    return ref_intervals
+    cocotb.log.info(f"{measures}")
 
 @cocotb.test()
-async def run_tcp_test(dut):
-    tb = TCPSlowTB(dut)
-    cocotb.start_soon(Clock(dut.clk, 4, units='ns').start())
+async def run_bw_tests(dut):
+    DIRECTION = ClientDir.SEND
+    NUM_REQS = 100
+    BUF_SIZE = 8192
+    NUM_CONNS = 1
 
+    tb = TCPOpenLoopTB(dut, NUM_CONNS, DIRECTION, NUM_REQS, BUF_SIZE)
+    cocotb.start_soon(Clock(dut.clk, tb.CLOCK_CYCLE_TIME, units='ns').start())
     await reset(dut)
+
+    res_dir = Path(f"./bw_benchmark/{DIRECTION.name.lower()}/reqs_{NUM_REQS}/"
+                   f"conns_{NUM_CONNS}/buf_{BUF_SIZE}")
+    res_dir.mkdir(parents=True, exist_ok=True)
+
+    measures = await run_one_bw_test(tb, NUM_CONNS, DIRECTION, NUM_REQS,
+            BUF_SIZE)
+
+    log_four_tuple = TCPFourTuple(our_ip = "198.0.0.5",
+                                our_port = 55000,
+                                their_ip = "198.0.0.7",
+                                their_port = 60000)
+    log_reader = TCPOpenBwLogRead(8, 2, tb, log_four_tuple)
+    log_reader.entries_to_csv(f"{str(res_dir)}/bw_log.csv", measures)
+
+
+async def run_one_bw_test(tb, num_conns, direction, num_reqs, buf_size):
+    hw_app_recv_stats = CocoQueue()
     # start up all the hw mimic tasks
     app_flow_notif = cocotb.start_soon(tb.app_mimic.flow_notif())
-    app_loop = cocotb.start_soon(tb.app_mimic.app_loop())
+    app_loop = cocotb.start_soon(tb.app_mimic.app_loop(hw_app_recv_stats))
     buf_copy = cocotb.start_soon(tb.buf_cpy_obj.req_loop())
 
     # start up the app tasks
-    timers = CocoQueue()
-    send_task = cocotb.start_soon(run_send_loop(dut, tb, timers))
-    recv_task = cocotb.start_soon(run_recv_loop(dut, tb))
-    timer_task = cocotb.start_soon(timer_tasks(tb, timers))
+    sw_app_recv_stats = CocoQueue()
+    send_task = cocotb.start_soon(tcp_open_loop_client.run_send_loop(tb))
+    recv_task = cocotb.start_soon(tcp_open_loop_client.run_recv_loop(tb,
+        sw_app_recv_stats))
+    timer_task = cocotb.start_soon(tcp_open_loop_client.timer_tasks(tb))
 
     await Combine(app_flow_notif, app_loop, buf_copy, send_task, recv_task,
             timer_task)
 
-
-async def timer_tasks(tb, timer_queue):
-    queue_get = cocotb.start_soon(timer_queue.get())
-    timer = await First(tb.done_event.wait(), Join(queue_get))
-    if timer is None:
-        cocotb.log.info("Timer loop exiting")
-        return
-
-    await timer
-
-async def run_send_loop(dut, tb, timer_queue):
-    pkts_sent = 0
-    done_event = Event()
-
-    while True:
-        pkt_to_send, timer = await tb.TCP_driver.get_packet_to_send()
-        if pkt_to_send is not None:
-            if timer is not None:
-                await timer_queue.put(timer)
-
-            await tb.input_op.xmit_frame(pkt_to_send)
-
-        else:
-            if tb.TCP_driver.all_flows_done():
-                cocotb.log.info("Send loop exiting")
-                return
-            else:
-                await RisingEdge(dut.clk)
-
-def reassemble_pkt(tb, src_ip, dst_ip, tcp_pkt_bytes):
-    eth_hdr = Ether()
-    eth_hdr.src = tb.IP_TO_MAC[src_ip]
-    eth_hdr.dst = tb.IP_TO_MAC[dst_ip]
-
-    ip_pkt = IP()
-    ip_pkt.src = src_ip
-    ip_pkt.dst = dst_ip
-    ip_pkt.flags = "DF"
-    ip_pkt.proto = 6
-    ip_pkt.add_payload(bytes(tcp_pkt_bytes))
-
-    pkt = eth_hdr/ip_pkt
-    return pkt
-
-async def run_recv_loop(dut, tb):
-    while True:
-        tx_pkt_out = None
-        try:
-            resp_coro = cocotb.start_soon(tb.tx_pkt_out_op.recv_resp())
-            tx_pkt_out = await with_timeout(resp_coro,
-                    tb.CLOCK_CYCLE_TIME*500, timeout_unit="ns")
-        except SimTimeoutError:
-            if tb.TCP_driver.all_flows_closed():
-                cocotb.log.info("Recv loop exiting")
-                tb.done_event.set()
-                return
-            continue
-        tcp_pkt_bytes = bytearray(tx_pkt_out["tcp_hdr"].buff)
-        src_ip = socket.inet_ntoa(tx_pkt_out["src_ip"].buff)
-        dst_ip = socket.inet_ntoa(tx_pkt_out["dst_ip"].buff)
-        # go and find the payload
-        payload_des = PayloadBufStruct(init_bitstring=tx_pkt_out["payload"])
-        cocotb.log.info(f"Received payload entry is {payload_des}")
-        payload_addr = payload_des.getBitfield("addr")
-        addr = payloadPtrBitfield("addr", init_bitfield=payload_addr).to_addr()
-        size = payload_des.getField("size")
-        flowid = tx_pkt_out["flowid"]
-        recv_buf = tb.tx_circ_bufs[flowid].read_from(addr, size)
-        cocotb.log.info(f"Received buffer is {recv_buf}")
-        tcp_pkt_bytes.extend(recv_buf)
-
-        pkt = reassemble_pkt(tb, src_ip, dst_ip, tcp_pkt_bytes)
-
-        cocotb.log.info(f"Received pkt {pkt.show2(dump=True)}")
-
-        tb.TCP_driver.recv_packet(pkt.build())
-
-        if tb.TCP_driver.all_flows_closed():
-            cocotb.log.info("Recv loop exiting")
-            tb.done_event.set()
-            return
-
+    pkt_times = []
+    if direction == ClientDir.SEND:
+        pkt_times = hw_app_recv_stats.get_nowait()
+    else:
+        pkt_times = sw_app_recv_stats.get_nowait()
+    return pkt_times
 
