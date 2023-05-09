@@ -177,6 +177,8 @@ import tcp_misc_pkg::*;
         update_rdy = 1'b0;
         advance_arb = 1'b0;
 
+        store_next_sched_state = 1'b0;
+
         update_state_next = update_state_reg;
         case (update_state_reg)
             RD_CMD: begin
