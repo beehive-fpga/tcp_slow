@@ -30,6 +30,7 @@ filesets:
             - tx_timeout_eng.sv
         depend:
             - uwcse:beehive:common_inc
+            - uwcse:beehive:tcp_inc
             - uwcse:buckfast:bsg_misc
             - uwcse:buckfast:bsg_mem
             - uwcse:buckfast:ram
