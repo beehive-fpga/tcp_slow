@@ -49,6 +49,8 @@ import packet_struct_pkg::*;
 
     logic   [TX_PAYLOAD_PTR_W:0]        curr_tx_tail_ptr_reg;
     logic   [TX_PAYLOAD_PTR_W:0]        curr_tx_tail_ptr_next;
+    
+    logic   [`WIN_SIZE_W-1:0]           their_rx_win;
 
     smol_tx_state_struct                curr_tx_state_reg;
     smol_tx_state_struct                curr_tx_state_next;
@@ -151,7 +153,8 @@ import packet_struct_pkg::*;
     
     // never completely close the window as a hack instead of proper zero-window probing...
     // it's kind of proper, but we don't have a back-off timer basically
-    logic [`WIN_SIZE_W-1:0] their_rx_win = curr_rx_state_reg.their_win_size == 0
+
+    assign their_rx_win = curr_rx_state_reg.their_win_size == 0
                                         ? 1 
                                         : curr_rx_state_reg.their_win_size;
     
