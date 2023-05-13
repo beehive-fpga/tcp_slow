@@ -57,7 +57,6 @@ module tcp_rx_ctrl (
     ,input  logic                           slow_path_rdy
 
     ,input  logic                           slow_path_done_val
-    ,input  logic                           drop_pkt
     ,output logic                           slow_path_done_rdy
 );
 

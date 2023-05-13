@@ -160,7 +160,8 @@ import packet_struct_pkg::*;
     
     // for the retransmit segment, calculate from the last ack'ed byte
     seg_size_calc_w_window #(
-        .ptr_w(TX_PAYLOAD_PTR_W)
+         .ptr_w         (TX_PAYLOAD_PTR_W   )
+        ,.MAX_SEG_SIZE  (`MAX_SEG_SIZE      )
     ) rt_segment (
          .trail_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
         ,.lead_ptr      (curr_tx_tail_ptr_reg                                           )
@@ -171,7 +172,8 @@ import packet_struct_pkg::*;
 
     // for the new segment, calculate from the sequence number
     seg_size_calc_w_window #(
-        .ptr_w(TX_PAYLOAD_PTR_W)
+         .ptr_w         (TX_PAYLOAD_PTR_W   )
+        ,.MAX_SEG_SIZE  (`MAX_SEG_SIZE      )
     ) new_segment (
          .trail_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
         ,.lead_ptr      (curr_tx_tail_ptr_reg                                           )

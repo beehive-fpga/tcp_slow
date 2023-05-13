@@ -107,7 +107,6 @@ import packet_struct_pkg::*;
     logic                       slow_path_rdy;
 
     logic                       slow_path_done_val;
-    logic                       drop_pkt;
     logic                       slow_path_done_rdy;
     
     logic                       flowid_manager_req;
@@ -127,7 +126,6 @@ import packet_struct_pkg::*;
         ,.slow_path_rdy                     (slow_path_rdy              )
                                                                         
         ,.slow_path_done_val                (slow_path_done_val         )
-        ,.drop_pkt                          (drop_pkt                   )
         ,.slow_path_done_rdy                (slow_path_done_rdy         )
     
         ,.flowid_manager_req                (flowid_manager_req         )
