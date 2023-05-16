@@ -313,7 +313,7 @@ import packet_struct_pkg::*;
         ,.seq_num               (OUR_SEQ_NUM                       )
         ,.ack_num               (tcp_hdr_reg.seq_num + 1           )
         ,.flags                 (`TCP_SYN | `TCP_ACK               )
-        ,.window                ((1 << RX_PAYLOAD_PTR_W) - 1       )
+        ,.window                ({(PAYLOAD_PTR_W){1'b1}}           )
         ,.tcp_hdr_req_rdy       ()
 
         ,.outbound_tcp_hdr_val   ()
