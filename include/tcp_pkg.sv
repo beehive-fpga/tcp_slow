@@ -6,15 +6,15 @@ package tcp_pkg;
 
     localparam TIMESTAMP_W = 64;
 
-    localparam MAX_FLOW_CNT = 16;
+    localparam MAX_FLOW_CNT = 4;
     localparam FLOWID_W = $clog2(MAX_FLOW_CNT);
 
-    localparam PAYLOAD_PTR_W = 14;
+    localparam PAYLOAD_PTR_W = 16;
     localparam RX_PAYLOAD_PTR_W = PAYLOAD_PTR_W;
     localparam TX_PAYLOAD_PTR_W = PAYLOAD_PTR_W;
 
     localparam RT_ACK_THRESHOLD = 3;
-    localparam RT_ACK_THRESHOLD_W = $clog2(RT_ACK_THRESHOLD) + 1;;
+    localparam RT_ACK_THRESHOLD_W = $clog2(RT_ACK_THRESHOLD) + 1;
 
     localparam PAYLOAD_ENTRY_ADDR_W = 32;
     localparam PAYLOAD_ENTRY_LEN_W = 16;
@@ -33,7 +33,7 @@ package tcp_pkg;
         ack_state_struct            our_ack_state;
         logic   [`ACK_NUM_W-1:0]    their_ack_num;
         logic   [`WIN_SIZE_W-1:0]   their_win_size;
-        logic   [`WIN_SIZE_W-1:0]   our_win_size;
+        logic   [PAYLOAD_PTR_W:0]   our_win_size;
     } smol_rx_state_struct;
     localparam SMOL_RX_STATE_STRUCT_W = $bits(smol_rx_state_struct);
 
