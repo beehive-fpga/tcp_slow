@@ -8,7 +8,8 @@ module seg_size_calc_w_window #(
     ,input  [ptr_w:0]           next_send_ptr
     ,input  [WIN_SIZE_W-1:0]    curr_win
 
-    ,output [ptr_w:0]  seg_size
+    ,output [ptr_w:0]   seg_size
+    ,output [ptr_w:0]   new_unsent_size
 );
     logic   [ptr_w:0]           buf_size_calc;
     logic   [ptr_w:0]           buf_size;
@@ -31,6 +32,8 @@ module seg_size_calc_w_window #(
     assign max_send_size = avail_win < MAX_SEG_SIZE
                         ? avail_win
                            : MAX_SEG_SIZE;
+
+    assign new_unsent_size = unsent_data - seg_size;
                     
     // try to only send segments that are a multiple of 32 bytes
     assign seg_size = unsent_data > max_send_size

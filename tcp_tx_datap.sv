@@ -157,17 +157,21 @@ import packet_struct_pkg::*;
     assign their_rx_win = curr_rx_state_reg.their_win_size == 0
                                         ? 1 
                                         : curr_rx_state_reg.their_win_size;
+
+    logic   [TX_PAYLOAD_PTR_W:0]    rt_unsent;
+    logic   [TX_PAYLOAD_PTR_W:0]    new_unsent;
     
     // for the retransmit segment, calculate from the last ack'ed byte
     seg_size_calc_w_window #(
          .ptr_w         (TX_PAYLOAD_PTR_W   )
         ,.MAX_SEG_SIZE  (`MAX_SEG_SIZE      )
     ) rt_segment (
-         .trail_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
-        ,.lead_ptr      (curr_tx_tail_ptr_reg                                           )
-        ,.next_send_ptr (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
-        ,.curr_win      (their_rx_win                                                   )
-        ,.seg_size      (rt_seg_size                                                    )
+         .trail_ptr         (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
+        ,.lead_ptr          (curr_tx_tail_ptr_reg                                           )
+        ,.next_send_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
+        ,.curr_win          (their_rx_win                                                   )
+        ,.seg_size          (rt_seg_size                                                    )
+        ,.new_unsent_size   (rt_unsent                                                      )
     );
 
     // for the new segment, calculate from the sequence number
@@ -175,28 +179,38 @@ import packet_struct_pkg::*;
          .ptr_w         (TX_PAYLOAD_PTR_W   )
         ,.MAX_SEG_SIZE  (`MAX_SEG_SIZE      )
     ) new_segment (
-         .trail_ptr     (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
-        ,.lead_ptr      (curr_tx_tail_ptr_reg                                           )
-        ,.next_send_ptr (curr_tx_state_reg.our_seq_num[TX_PAYLOAD_PTR_W:0]              )
-        ,.curr_win      (their_rx_win                                                   )
-        ,.seg_size      (new_seg_size                                                   )
+         .trail_ptr         (curr_rx_state_reg.our_ack_state.ack_num[TX_PAYLOAD_PTR_W:0]    )
+        ,.lead_ptr          (curr_tx_tail_ptr_reg                                           )
+        ,.next_send_ptr     (curr_tx_state_reg.our_seq_num[TX_PAYLOAD_PTR_W:0]              )
+        ,.curr_win          (their_rx_win                                                   )
+        ,.seg_size          (new_seg_size                                                   )
+        ,.new_unsent_size   (new_unsent                                                     )
     );
+
+    logic   [TX_PAYLOAD_PTR_W:0]    next_unsent_size;
+
+    logic   [`SEQ_NUM_W-1:0]    seq_num_test;
+
+    assign seq_num_test = curr_tx_state_reg.our_seq_num + new_seg_size;
 
     always_comb begin
         our_next_seq_num = '0;
         pkt_seq_num = '0;
         payload_desc = '0;
-        if (sched_data_reg.rt_flag) begin
+        next_unsent_size = '0;
+        if (sched_data_reg.rt_flag == 1'b1) begin
             pkt_seq_num = curr_rx_state_reg.our_ack_state.ack_num;
             our_next_seq_num = curr_rx_state_reg.our_ack_state.ack_num + rt_seg_size;
             payload_desc.payload_addr = curr_rx_state_reg.our_ack_state.ack_num;
             payload_desc.payload_len = rt_seg_size;
+            next_unsent_size = rt_unsent;
         end
         else begin
             pkt_seq_num = curr_tx_state_reg.our_seq_num;
             our_next_seq_num = curr_tx_state_reg.our_seq_num + new_seg_size;
             payload_desc.payload_addr = curr_tx_state_reg.our_seq_num[TX_PAYLOAD_PTR_W-1:0];
             payload_desc.payload_len = new_seg_size;
+            next_unsent_size = new_unsent;
         end
     end
 
@@ -230,7 +244,12 @@ import packet_struct_pkg::*;
         update_cmd.ack_pend_set_clear.cmd = CLEAR;
 
         update_cmd.data_pend_set_clear.timestamp = sched_data_reg.data_pend_flag.timestamp;
-        update_cmd.data_pend_set_clear.cmd = CLEAR;
+        if (next_unsent_size == 0) begin
+            update_cmd.data_pend_set_clear.cmd = CLEAR;
+        end
+        else begin
+            update_cmd.data_pend_set_clear.cmd = NOP;
+        end
     end
 
     // since we can't count on the data pending flag, we need to check if the payload actually has length.
