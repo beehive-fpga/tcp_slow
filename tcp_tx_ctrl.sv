@@ -41,6 +41,7 @@ import tcp_pkg::*;
     ,output logic           ctrl_datap_store_state
     ,output logic           ctrl_datap_store_calc
     ,output logic           ctrl_datap_store_tuple
+    ,output logic           ctrl_datap_store_sched
 
     ,input  logic           datap_ctrl_produce_pkt
 
@@ -78,6 +79,7 @@ import tcp_pkg::*;
         ctrl_datap_store_state = 1'b0;
         ctrl_datap_store_calc = 1'b0;
         ctrl_datap_store_tuple = 1'b0;
+        ctrl_datap_store_sched = 1'b0;
 
         tx_pipe_tx_tail_ptr_rd_req_val = 1'b0;
         tx_pipe_tx_tail_ptr_rd_resp_rdy = 1'b0;
@@ -145,6 +147,7 @@ import tcp_pkg::*;
                 end
             end
             PKT_OUT: begin
+                ctrl_datap_store_sched = 1'b1;
                 proto_calc_tx_pkt_val = datap_ctrl_produce_pkt;
                 if (datap_ctrl_produce_pkt) begin
                     if (proto_calc_tx_pkt_rdy) begin

@@ -55,7 +55,7 @@ package tcp_pkg;
     localparam RX_STORE_BUF_Q_STRUCT_W = $bits(rx_store_buf_q_struct);
 
     // 1 second
-    localparam RT_TIMEOUT_CYCLES = 250000000;
+    localparam RT_TIMEOUT_CYCLES = 5 * (250000000);
     
     localparam RX_TMP_BUF_NUM_SLABS = 2;
     localparam RX_TMP_BUF_SLAB_NUM_W = $clog2(RX_TMP_BUF_NUM_SLABS);

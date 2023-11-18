@@ -62,6 +62,7 @@ import packet_struct_pkg::*;
     logic           ctrl_datap_store_state;
     logic           ctrl_datap_store_calc;
     logic           ctrl_datap_store_tuple;
+    logic           ctrl_datap_store_sched;
 
     logic           datap_ctrl_produce_pkt;
     
@@ -129,6 +130,7 @@ import packet_struct_pkg::*;
         ,.ctrl_datap_store_state                (ctrl_datap_store_state                 )
         ,.ctrl_datap_store_calc                 (ctrl_datap_store_calc                  )
         ,.ctrl_datap_store_tuple                (ctrl_datap_store_tuple                 )
+        ,.ctrl_datap_store_sched                (ctrl_datap_store_sched                 )
 
         ,.datap_ctrl_produce_pkt                (datap_ctrl_produce_pkt                 )
     
@@ -180,6 +182,7 @@ import packet_struct_pkg::*;
         ,.ctrl_datap_store_state                (ctrl_datap_store_state                 )
         ,.ctrl_datap_store_calc                 (ctrl_datap_store_calc                  )
         ,.ctrl_datap_store_tuple                (ctrl_datap_store_tuple                 )
+        ,.ctrl_datap_store_sched                (ctrl_datap_store_sched                 )
 
         ,.datap_ctrl_produce_pkt                (datap_ctrl_produce_pkt                 )
     

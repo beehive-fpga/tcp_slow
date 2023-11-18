@@ -34,6 +34,7 @@ import packet_struct_pkg::*;
     ,input  logic                           ctrl_datap_store_state
     ,input  logic                           ctrl_datap_store_calc
     ,input  logic                           ctrl_datap_store_tuple
+    ,input  logic                           ctrl_datap_store_sched
 
     ,output logic                           datap_ctrl_produce_pkt
 
@@ -74,6 +75,16 @@ import packet_struct_pkg::*;
     logic   [TX_PAYLOAD_PTR_W:0]        rt_seg_size;
     logic   [TX_PAYLOAD_PTR_W:0]        new_seg_size;
     
+    logic   [TX_PAYLOAD_PTR_W:0]        rt_unsent;
+    logic   [TX_PAYLOAD_PTR_W:0]        new_unsent;
+    
+    logic   [TX_PAYLOAD_PTR_W:0]        rt_unsent_next;
+    logic   [TX_PAYLOAD_PTR_W:0]        new_unsent_next;
+    
+    logic   [TX_PAYLOAD_PTR_W:0]        rt_unsent_reg;
+    logic   [TX_PAYLOAD_PTR_W:0]        new_unsent_reg;
+    
+    
     logic   [`SEQ_NUM_W-1:0]    pkt_seq_num;
     logic   [`SEQ_NUM_W-1:0]    our_next_seq_num;
     payload_buf_struct          payload_desc;
@@ -110,6 +121,9 @@ import packet_struct_pkg::*;
         hdr_out_reg <= hdr_out_next;
         payload_desc_reg <= payload_desc_next;
         next_tx_state_reg <= next_tx_state_next;
+
+        new_unsent_reg <= new_unsent_next;
+        rt_unsent_reg <= rt_unsent_next;
     end
 
     always_comb begin
@@ -138,6 +152,14 @@ import packet_struct_pkg::*;
         end
     end
 
+    assign new_unsent_next = ctrl_datap_store_calc
+                            ? new_unsent
+                            : new_unsent_reg;
+
+    assign rt_unsent_next = ctrl_datap_store_calc
+                            ? rt_unsent
+                            : rt_unsent_reg;
+
     always_comb begin
         flow_tuple_next = flow_tuple_reg;
         if (ctrl_datap_store_tuple) begin
@@ -158,9 +180,6 @@ import packet_struct_pkg::*;
                                         ? 1 
                                         : curr_rx_state_reg.their_win_size;
 
-    logic   [TX_PAYLOAD_PTR_W:0]    rt_unsent;
-    logic   [TX_PAYLOAD_PTR_W:0]    new_unsent;
-    
     // for the retransmit segment, calculate from the last ack'ed byte
     seg_size_calc_w_window #(
          .ptr_w         (TX_PAYLOAD_PTR_W   )
@@ -197,42 +216,44 @@ import packet_struct_pkg::*;
         our_next_seq_num = '0;
         pkt_seq_num = '0;
         payload_desc = '0;
-        next_unsent_size = '0;
         if (sched_data_reg.rt_flag == 1'b1) begin
             pkt_seq_num = curr_rx_state_reg.our_ack_state.ack_num;
             our_next_seq_num = curr_rx_state_reg.our_ack_state.ack_num + rt_seg_size;
             payload_desc.payload_addr = curr_rx_state_reg.our_ack_state.ack_num;
             payload_desc.payload_len = rt_seg_size;
-            next_unsent_size = rt_unsent;
         end
         else begin
             pkt_seq_num = curr_tx_state_reg.our_seq_num;
             our_next_seq_num = curr_tx_state_reg.our_seq_num + new_seg_size;
             payload_desc.payload_addr = curr_tx_state_reg.our_seq_num[TX_PAYLOAD_PTR_W-1:0];
             payload_desc.payload_len = new_seg_size;
-            next_unsent_size = new_unsent;
         end
     end
+
+    assign next_unsent_size = (sched_data_reg.rt_flag == 1'b1)
+                            ? rt_unsent_reg
+                            : new_unsent_reg;
 
     always_comb begin
         next_tx_state_next = next_tx_state_reg;
         payload_desc_next = payload_desc_reg;
         hdr_out_next = hdr_out_reg;
-        update_cmd_next = update_cmd_reg;
 
         if (ctrl_datap_store_calc) begin
             next_tx_state_next.our_seq_num = our_next_seq_num;
             payload_desc_next = payload_desc;
             hdr_out_next = assembled_hdr;
-            update_cmd_next = update_cmd;
         end
         else begin
             next_tx_state_next = next_tx_state_reg;
             payload_desc_next = payload_desc_reg;
             hdr_out_next = hdr_out_reg;
-            update_cmd_next = update_cmd_reg;
         end
     end
+
+    assign update_cmd_next = ctrl_datap_store_sched
+                            ? update_cmd
+                            : update_cmd_reg;
 
     always_comb begin
         update_cmd = '0;
