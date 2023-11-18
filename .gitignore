@@ -29,3 +29,6 @@ results.xml
 *.old
 generated/
 fusesoc.conf
+
+# Vim 
+*.swp
