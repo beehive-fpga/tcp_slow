@@ -127,6 +127,10 @@ import packet_struct_pkg::*;
                                                                         
         ,.slow_path_done_val                (slow_path_done_val         )
         ,.slow_path_done_rdy                (slow_path_done_rdy         )
+        // TODO: hook this up to actually drop the packet...technically this
+        // is a memory leak for the degenerate case where we receive a bunch of 
+        // invalid non PSH | ACK packets
+        ,.drop_pkt                          ()
     
         ,.flowid_manager_req                (flowid_manager_req         )
         ,.flowid_avail                      (flowid_avail               )
