@@ -37,25 +37,28 @@ from tcp_open_loop_client import TCPOpenLoopTB
 
 from open_loop_generator import ClientDir
 
-#@cocotb.test()
-#async def run_tcp_test_closed_loop(dut):
-#    tb = TCPClosedLoopTB(dut, 1)
-#    cocotb.start_soon(Clock(dut.clk, tb.CLOCK_CYCLE_TIME, units='ns').start())
-#
-#    await reset(dut)
-#    # start up all the hw mimic tasks
-#    app_flow_notif = cocotb.start_soon(tb.app_mimic.flow_notif())
-#    app_loop = cocotb.start_soon(tb.app_mimic.app_loop())
-#    buf_copy = cocotb.start_soon(tb.buf_cpy_obj.req_loop())
-#
-#    # start up the app tasks
-#    timers = CocoQueue()
-#    send_task = cocotb.start_soon(tcp_closed_loop_client.run_send_loop(dut, tb, timers))
-#    recv_task = cocotb.start_soon(tcp_closed_loop_client.run_recv_loop(dut, tb))
-#    timer_task = cocotb.start_soon(tcp_closed_loop_client.timer_tasks(tb, timers))
-#
-#    await Combine(app_flow_notif, app_loop, buf_copy, send_task, recv_task,
-#            timer_task)
+@cocotb.test()
+async def run_tcp_test_closed_loop(dut):
+    tb = TCPClosedLoopTB(dut, 1)
+    cocotb.start_soon(Clock(dut.clk, tb.CLOCK_CYCLE_TIME, units='ns').start())
+
+    await reset(dut)
+    # start up all the hw mimic tasks
+    app_flow_notif = cocotb.start_soon(tb.app_mimic.flow_notif())
+    app_loop = cocotb.start_soon(tb.app_mimic.app_loop())
+    buf_copy = cocotb.start_soon(tb.buf_cpy_obj.req_loop())
+
+    # start the request generator
+    req_gen_loop = tb.TCP_driver.run_req_gens()
+
+    # start up the app tasks
+    timers = CocoQueue()
+    send_task = cocotb.start_soon(tcp_closed_loop_client.run_send_loop(dut, tb, timers))
+    recv_task = cocotb.start_soon(tcp_closed_loop_client.run_recv_loop(dut, tb))
+    timer_task = cocotb.start_soon(tcp_closed_loop_client.timer_tasks(tb, timers))
+
+    await Combine(app_flow_notif, app_loop, buf_copy, send_task, recv_task,
+            timer_task, req_gen_loop)
 
 #@cocotb.test()
 async def run_tcp_test_open_loop(dut):
@@ -74,7 +77,7 @@ async def run_tcp_test_open_loop(dut):
     return ref_intervals
     cocotb.log.info(f"{measures}")
 
-@cocotb.test()
+#@cocotb.test()
 async def run_bw_tests(dut):
     DIRECTION = ClientDir.SEND
     NUM_REQS = 100

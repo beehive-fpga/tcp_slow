@@ -20,7 +20,7 @@ class payloadPtrBitfield(bitfield):
     wrapping/overflow
     """
     def sub(self, other):
-        print(f"other.value {other.value}, self.value {self.value}")
+        #print(f"other.value {other.value}, self.value {self.value}")
         if other.value > self.value:
             max_val = 1 << self.num_ptr_w
             diff = other.to_addr() - self.to_addr()

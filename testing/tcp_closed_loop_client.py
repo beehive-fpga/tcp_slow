@@ -11,6 +11,9 @@ from scapy.layers.inet import IP, UDP, TCP
 
 from cocotb.log import SimLog
 
+sys.path.append(os.environ["BEEHIVE_PROJECT_ROOT"] + "/sample_designs/tcp_with_logging")
+from tb_tcp_with_logging_top import setup_conn_list
+
 sys.path.append(os.environ["BEEHIVE_PROJECT_ROOT"] + "/cocotb_testing/common/")
 from tcp_slow_test_utils import TCPSlowTB
 from tcp_automaton_driver import TCPAutomatonDriver, EchoGenerator
@@ -21,9 +24,11 @@ class TCPClosedLoopTB(TCPSlowTB):
     def __init__(self, dut, num_conns):
         super().__init__(dut)
 
-        self.TCP_driver = TCPAutomatonDriver(num_conns, EchoGenerator, (self.MAC_W,
-            1024, 64, 2),
-                dut.clk)
+        self.req_gen_list = setup_conn_list(1, self.MAC_W, 64, 64, 2, self.done_event,
+                                            self.CLOCK_CYCLE_TIME, 10)
+
+        self.TCP_driver = TCPAutomatonDriver(dut.clk, self.req_gen_list)
+        
 
         self.app_mimic = HWEchoMimic(dut.clk, self.done_event, self.rx_circ_bufs,
                 self.tx_circ_bufs, self.CLIENT_LEN_BYTES, int(self.MAC_W/8),
