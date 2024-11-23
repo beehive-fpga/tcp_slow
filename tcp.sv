@@ -52,10 +52,10 @@ import packet_struct_pkg::*;
     ,output four_tuple_struct                   app_new_flow_entry
     ,input  logic                               app_new_flow_notif_rdy
     
-    ,input  logic                               app_rx_head_ptr_wr_req_val
-    ,input  logic   [FLOWID_W-1:0]              app_rx_head_ptr_wr_req_addr
-    ,input  logic   [RX_PAYLOAD_PTR_W:0]        app_rx_head_ptr_wr_req_data
-    ,output logic                               rx_head_ptr_app_wr_req_rdy
+    ,input  logic                               app_rx_head_buf_wr_req_val
+    ,input  logic   [FLOWID_W-1:0]              app_rx_head_buf_wr_req_addr
+    ,input  logic   [TCP_ADJUST_IDX_W-1:0]      app_rx_head_buf_wr_req_data_old
+    ,output logic                               rx_head_buf_app_wr_req_rdy
 
     ,input  logic                               app_rx_head_ptr_rd_req_val
     ,input  logic   [FLOWID_W-1:0]              app_rx_head_ptr_rd_req_addr
@@ -559,10 +559,10 @@ import packet_struct_pkg::*;
          .clk   (clk    )
         ,.rst   (rst    )
         
-        ,.head_ptr_wr_req_val           (app_rx_head_ptr_wr_req_val         )
-        ,.head_ptr_wr_req_addr          (app_rx_head_ptr_wr_req_addr        )
-        ,.head_ptr_wr_req_data          (app_rx_head_ptr_wr_req_data        )
-        ,.head_ptr_wr_req_rdy           (rx_head_ptr_app_wr_req_rdy         )
+        ,.head_buf_wr_req_val           (app_rx_head_buf_wr_req_val         )
+        ,.head_buf_wr_req_addr          (app_rx_head_buf_wr_req_addr        )
+        ,.head_buf_wr_req_data_old      (app_rx_head_buf_wr_req_data_old    )
+        ,.head_buf_wr_req_rdy           (rx_head_buf_app_wr_req_rdy         )
     
         ,.head_ptr_rd0_req_val          (app_rx_head_ptr_rd_req_val         )
         ,.head_ptr_rd0_req_addr         (app_rx_head_ptr_rd_req_addr        )
