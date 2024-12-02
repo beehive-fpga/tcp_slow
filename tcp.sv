@@ -31,18 +31,18 @@ import packet_struct_pkg::*;
     ,output payload_buf_struct                  tcp_rx_dst_payload_entry
     ,input  logic                               dst_tcp_rx_hdr_rdy
 
-    ,input  logic                               store_buf_commit_ptr_wr_req_val
-    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_ptr_wr_req_addr
-    ,input  logic   [RX_PAYLOAD_PTR_W:0]        store_buf_commit_ptr_wr_req_data
-    ,output logic                               commit_ptr_store_buf_wr_req_rdy
+    ,input  logic                               store_buf_commit_buf_wr_req_val
+    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_buf_wr_req_addr
+    ,input  tcp_buf_update                      store_buf_commit_buf_wr_req_data
+    ,output logic                               commit_buf_store_buf_wr_req_rdy
 
-    ,input  logic                               store_buf_commit_ptr_rd_req_val
-    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_ptr_rd_req_addr
-    ,output logic                               commit_ptr_store_buf_rd_req_rdy
+    ,input  logic                               store_buf_commit_buf_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_buf_rd_req_addr
+    ,output logic                               commit_buf_store_buf_rd_req_rdy
 
-    ,output logic                               commit_ptr_store_buf_rd_resp_val
-    ,output logic   [RX_PAYLOAD_PTR_W:0]        commit_ptr_store_buf_rd_resp_data
-    ,input  logic                               store_buf_commit_ptr_rd_resp_rdy
+    ,output logic                               commit_buf_store_buf_rd_resp_val
+    ,output tcp_buf_info                        commit_buf_store_buf_rd_resp_data
+    ,input  logic                               store_buf_commit_buf_rd_resp_rdy
 
     /********************************
      * App interface
@@ -54,47 +54,47 @@ import packet_struct_pkg::*;
     
     ,input  logic                               app_rx_head_buf_wr_req_val
     ,input  logic   [FLOWID_W-1:0]              app_rx_head_buf_wr_req_addr
-    ,input  logic   [TCP_ADJUST_IDX_W-1:0]      app_rx_head_buf_wr_req_data_old
+    ,input  tcp_buf_update                      app_rx_head_buf_wr_req_data
     ,output logic                               rx_head_buf_app_wr_req_rdy
 
-    ,input  logic                               app_rx_head_ptr_rd_req_val
-    ,input  logic   [FLOWID_W-1:0]              app_rx_head_ptr_rd_req_addr
-    ,output logic                               rx_head_ptr_app_rd_req_rdy
+    ,input  logic                               app_rx_head_buf_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              app_rx_head_buf_rd_req_addr
+    ,output logic                               rx_head_buf_app_rd_req_rdy
     
-    ,output logic                               rx_head_ptr_app_rd_resp_val
-    ,output logic   [RX_PAYLOAD_PTR_W:0]        rx_head_ptr_app_rd_resp_data
-    ,input  logic                               app_rx_head_ptr_rd_resp_rdy
+    ,output logic                               rx_head_buf_app_rd_resp_val
+    ,output tcp_buf_info                        rx_head_buf_app_rd_resp_data
+    ,input  logic                               app_rx_head_buf_rd_resp_rdy
     
-    ,input  logic                               app_rx_commit_ptr_rd_req_val
-    ,input  logic   [FLOWID_W-1:0]              app_rx_commit_ptr_rd_req_addr
-    ,output logic                               rx_commit_ptr_app_rd_req_rdy
+    ,input  logic                               app_rx_commit_buf_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              app_rx_commit_buf_rd_req_addr
+    ,output logic                               rx_commit_buf_app_rd_req_rdy
 
-    ,output logic                               rx_commit_ptr_app_rd_resp_val
-    ,output logic   [RX_PAYLOAD_PTR_W:0]        rx_commit_ptr_app_rd_resp_data
-    ,input  logic                               app_rx_commit_ptr_rd_resp_rdy
+    ,output logic                               rx_commit_buf_app_rd_resp_val
+    ,output tcp_buf_info                        rx_commit_buf_app_rd_resp_data
+    ,input  logic                               app_rx_commit_buf_rd_resp_rdy
     
-    ,input                                      app_tx_head_ptr_rd_req_val
-    ,input          [FLOWID_W-1:0]              app_tx_head_ptr_rd_req_addr
-    ,output logic                               tx_head_ptr_app_rd_req_rdy
+    ,input                                      app_tx_head_buf_rd_req_val
+    ,input          [FLOWID_W-1:0]              app_tx_head_buf_rd_req_addr
+    ,output logic                               tx_head_buf_app_rd_req_rdy
 
-    ,output                                     tx_head_ptr_app_rd_resp_val
-    ,output logic   [FLOWID_W-1:0]              tx_head_ptr_app_rd_resp_addr
-    ,output logic   [TX_PAYLOAD_PTR_W:0]        tx_head_ptr_app_rd_resp_data
-    ,input  logic                               app_tx_head_ptr_rd_resp_rdy
+    ,output                                     tx_head_buf_app_rd_resp_val
+    ,output logic   [FLOWID_W-1:0]              tx_head_buf_app_rd_resp_addr
+    ,output tcp_buf_info                        tx_head_buf_app_rd_resp_data
+    ,input  logic                               app_tx_head_buf_rd_resp_rdy
     
-    ,input                                      app_tx_tail_ptr_wr_req_val
-    ,input          [FLOWID_W-1:0]              app_tx_tail_ptr_wr_req_addr
-    ,input          [TX_PAYLOAD_PTR_W:0]        app_tx_tail_ptr_wr_req_data
-    ,output                                     tx_tail_ptr_app_wr_req_rdy
+    ,input                                      app_tx_tail_buf_wr_req_val
+    ,input          [FLOWID_W-1:0]              app_tx_tail_buf_wr_req_addr
+    ,input tcp_buf_update                       app_tx_tail_buf_wr_req_data
+    ,output                                     tx_tail_buf_app_wr_req_rdy
     
-    ,input                                      app_tx_tail_ptr_rd_req_val
-    ,input          [FLOWID_W-1:0]              app_tx_tail_ptr_rd_req_addr
-    ,output logic                               tx_tail_ptr_app_rd_req_rdy
+    ,input                                      app_tx_tail_buf_rd_req_val
+    ,input          [FLOWID_W-1:0]              app_tx_tail_buf_rd_req_addr
+    ,output logic                               tx_tail_buf_app_rd_req_rdy
     
-    ,output                                     tx_tail_ptr_app_rd_resp_val
-    ,output logic   [FLOWID_W-1:0]              tx_tail_ptr_app_rd_resp_flowid
-    ,output logic   [TX_PAYLOAD_PTR_W:0]        tx_tail_ptr_app_rd_resp_data
-    ,input  logic                               app_tx_tail_ptr_rd_resp_rdy
+    ,output                                     tx_tail_buf_app_rd_resp_val
+    ,output logic   [FLOWID_W-1:0]              tx_tail_buf_app_rd_resp_flowid
+    ,output tcp_buf_info                        tx_tail_buf_app_rd_resp_data
+    ,input  logic                               app_tx_tail_buf_rd_resp_rdy
     
     ,input  logic                               app_sched_update_val
     ,input  sched_cmd_struct                    app_sched_update_cmd
@@ -128,11 +128,11 @@ import packet_struct_pkg::*;
     four_tuple_struct               new_flow_lookup_entry;
     smol_tx_state_struct            new_flow_tx_state;
     smol_rx_state_struct            new_flow_rx_state;
-    logic   [TX_PAYLOAD_PTR_W:0]    new_tx_head_ptr;
+    logic   [TX_PAYLOAD_PTR_W:0]    new_tx_head_ptr; // TODO: what's up with new_ stuff? we need to make an initial buf or smth?
     logic   [TX_PAYLOAD_PTR_W:0]    new_tx_tail_ptr;
     logic                           new_flow_rdy;
     
-    logic                           rx_pipe_rx_head_ptr_rd_req_val;
+    logic                           rx_pipe_rx_head_ptr_rd_req_val; // TODO: ask katie if it'll break stuff if i accept a rd req that doesn't have actual data.
     logic   [FLOWID_W-1:0]          rx_pipe_rx_head_ptr_rd_req_addr;
     logic                           rx_head_ptr_rx_pipe_rd_req_rdy;
 

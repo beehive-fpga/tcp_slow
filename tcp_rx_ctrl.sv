@@ -169,7 +169,7 @@ module tcp_rx_ctrl (
                   rx_head_ptr_rx_pipe_rd_resp_val & rx_tail_ptr_rx_pipe_rd_resp_val) begin
                     curr_rx_state_rd_resp_rdy = 1'b1;
                     curr_tx_state_rd_resp_rdy = 1'b1;
-                    rx_pipe_rx_head_ptr_rd_resp_rdy = 1'b1;
+                    rx_pipe_rx_head_ptr_rd_resp_rdy = 1'b1; // TODO: why is this and the line below done at the same time? in WB
                     rx_pipe_rx_tail_ptr_rd_resp_rdy = 1'b1;
                     state_next = CALCULATE;
                 end
