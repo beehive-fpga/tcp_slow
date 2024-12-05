@@ -7,7 +7,7 @@ import packet_struct_pkg::*;
      input clk
     ,input rst
 
-    ,input                                      src_tcp_rx_hdr_val
+    ,input                                      src_tcp_rx_hdr_val // tmp queue not empty (i think)
     ,output logic                               tcp_src_rx_hdr_rdy
     ,input          [`IP_ADDR_W-1:0]            src_tcp_rx_src_ip
     ,input          [`IP_ADDR_W-1:0]            src_tcp_rx_dst_ip
@@ -31,18 +31,18 @@ import packet_struct_pkg::*;
     ,output payload_buf_struct                  tcp_rx_dst_payload_entry
     ,input  logic                               dst_tcp_rx_hdr_rdy
 
-    ,input  logic                               store_buf_commit_buf_wr_req_val
-    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_buf_wr_req_addr
-    ,input  tcp_buf_update                      store_buf_commit_buf_wr_req_data
-    ,output logic                               commit_buf_store_buf_wr_req_rdy
+    ,input  logic                               store_buf_commit_idx_wr_req_val
+    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_idx_wr_req_addr
+    ,input  tcp_buf_update                      store_buf_commit_idx_wr_req_data
+    ,output logic                               commit_idx_store_buf_wr_req_rdy
 
-    ,input  logic                               store_buf_commit_buf_rd_req_val
-    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_buf_rd_req_addr
-    ,output logic                               commit_buf_store_buf_rd_req_rdy
+    ,input  logic                               store_buf_commit_idx_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_idx_rd_req_addr
+    ,output logic                               commit_idx_store_buf_rd_req_rdy
 
-    ,output logic                               commit_buf_store_buf_rd_resp_val
-    ,output tcp_buf_info                        commit_buf_store_buf_rd_resp_data
-    ,input  logic                               store_buf_commit_buf_rd_resp_rdy
+    ,output logic                               commit_idx_store_buf_rd_resp_val
+    ,output tcp_buf_idx                         commit_idx_store_buf_rd_resp_data
+    ,input  logic                               store_buf_commit_idx_rd_resp_rdy
 
     /********************************
      * App interface
@@ -133,7 +133,7 @@ import packet_struct_pkg::*;
     logic                           new_flow_rdy;
     
     logic                           rx_pipe_rx_head_ptr_rd_req_val; // TODO: ask katie if it'll break stuff if i accept a rd req that doesn't have actual data.
-    logic   [FLOWID_W-1:0]          rx_pipe_rx_head_ptr_rd_req_addr;
+    logic   [FLOWID_W-1:0]          rx_pipe_rx_head_ptr_rd_req_addr; // soln is to make an enqueue and dequeue module, cause each need to read to check full/empty
     logic                           rx_head_ptr_rx_pipe_rd_req_rdy;
 
     logic                           rx_head_ptr_rx_pipe_rd_resp_val;
@@ -580,18 +580,18 @@ import packet_struct_pkg::*;
         ,.head_ptr_rd1_resp_data        (rx_head_ptr_rx_pipe_rd_resp_data   )
         ,.head_ptr_rd1_resp_rdy         (rx_pipe_rx_head_ptr_rd_resp_rdy    )
         
-        ,.commit_ptr_wr_req_val         (store_buf_commit_ptr_wr_req_val    )
-        ,.commit_ptr_wr_req_addr        (store_buf_commit_ptr_wr_req_addr   )
-        ,.commit_ptr_wr_req_data        (store_buf_commit_ptr_wr_req_data   )
-        ,.commit_ptr_wr_req_rdy         (commit_ptr_store_buf_wr_req_rdy    )
+        ,.commit_idx_wr_req_val         (store_buf_commit_idx_wr_req_val    )
+        ,.commit_idx_wr_req_addr        (store_buf_commit_idx_wr_req_addr   )
+        ,.commit_idx_wr_req_data        (store_buf_commit_idx_wr_req_data   )
+        ,.commit_idx_wr_req_rdy         (commit_idx_store_buf_wr_req_rdy    )
     
-        ,.commit_ptr_rd0_req_val        (store_buf_commit_ptr_rd_req_val    )
-        ,.commit_ptr_rd0_req_addr       (store_buf_commit_ptr_rd_req_addr   )
-        ,.commit_ptr_rd0_req_rdy        (commit_ptr_store_buf_rd_req_rdy    )
+        ,.commit_idx_rd0_req_val        (store_buf_commit_idx_rd_req_val    )
+        ,.commit_idx_rd0_req_addr       (store_buf_commit_idx_rd_req_addr   )
+        ,.commit_idx_rd0_req_rdy        (commit_idx_store_buf_rd_req_rdy    )
     
-        ,.commit_ptr_rd0_resp_val       (commit_ptr_store_buf_rd_resp_val   )
-        ,.commit_ptr_rd0_resp_data      (commit_ptr_store_buf_rd_resp_data  )
-        ,.commit_ptr_rd0_resp_rdy       (store_buf_commit_ptr_rd_resp_rdy   )
+        ,.commit_idx_rd0_resp_val       (commit_idx_store_buf_rd_resp_val   )
+        ,.commit_idx_rd0_resp_data      (commit_idx_store_buf_rd_resp_data  )
+        ,.commit_idx_rd0_resp_rdy       (store_buf_commit_idx_rd_resp_rdy   )
         
         ,.commit_ptr_rd1_req_val        (app_rx_commit_ptr_rd_req_val       )
         ,.commit_ptr_rd1_req_addr       (app_rx_commit_ptr_rd_req_addr      )
