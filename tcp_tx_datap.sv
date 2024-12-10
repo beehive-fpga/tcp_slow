@@ -216,7 +216,7 @@ import packet_struct_pkg::*;
         our_next_seq_num = '0;
         pkt_seq_num = '0;
         payload_desc = '0;
-        if (sched_data_reg.rt_flag == 1'b1) begin
+        if (sched_data_reg.rt_flag.flag == 1'b1) begin
             pkt_seq_num = curr_rx_state_reg.our_ack_state.ack_num;
             our_next_seq_num = curr_rx_state_reg.our_ack_state.ack_num + rt_seg_size;
             payload_desc.payload_addr = curr_rx_state_reg.our_ack_state.ack_num;
