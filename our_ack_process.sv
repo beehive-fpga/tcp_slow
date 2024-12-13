@@ -5,6 +5,7 @@ import tcp_pkg::*;
      input  logic   [`ACK_NUM_W-1:0]            pkt_ack_num
     ,input  logic   [`SEQ_NUM_W-1:0]            our_curr_seq_num
     ,input  ack_state_struct                    our_curr_ack_state
+    ,input  logic    [PAYLOAD_ENTRY_LEN_W-1:0]  pkt_payload_len
 
     ,output ack_state_struct                    our_next_ack_state
     ,output logic                               set_rt_flag
@@ -31,7 +32,9 @@ import tcp_pkg::*;
 
     assign next_tx_head_ptr = our_next_ack_state.ack_num[TX_PAYLOAD_PTR_W:0];
 
-    assign dup_ack = (our_curr_ack_num == pkt_ack_num) & data_unacked;
+    // FIXME: RFC 5681, section 2 gives the full definition of duplicate ACKs,
+    // probably check all the conditions eventually https://datatracker.ietf.org/doc/html/rfc5681#section-2
+    assign dup_ack = (our_curr_ack_num == pkt_ack_num) && data_unacked && (pkt_payload_len == 0);
 
     always_comb begin
         update_ack = 1'b0;
