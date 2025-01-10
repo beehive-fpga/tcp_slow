@@ -99,6 +99,18 @@ import packet_struct_pkg::*;
     ,input  logic                               app_sched_update_val
     ,input  sched_cmd_struct                    app_sched_update_cmd
     ,output logic                               sched_app_update_rdy
+
+    /*
+    Buf Store
+    */
+    ,input                                  rx_store_buf_rx_buf_store_rd_req_val
+    ,input          [FLOWID_W-1:0]          rx_store_buf_rx_buf_store_rd_req_flowid
+    ,input          [RX_PAYLOAD_IDX_W-1:0]  rx_store_buf_rx_buf_store_rd_req_idx
+    ,output logic                           rx_buf_store_rx_store_buf_rd_req_rdy
+
+    ,output logic                           rx_buf_store_rx_store_buf_rd_resp_val
+    ,output         tcp_buf                 rx_buf_store_rx_store_buf_rd_resp_data
+    ,input                                  rx_store_buf_rx_buf_store_rd_resp_rdy
     
 );
     
@@ -625,7 +637,16 @@ import packet_struct_pkg::*;
          .clk   (clk    )
         ,.rst   (rst    )
 
-        ,.wr_req_val
+        ,.wr_req_val()
+    
+        ,.rd1_req_val(rx_store_buf_rx_buf_store_rd_req_val)
+        ,.rd1_req_flowid(rx_store_buf_rx_buf_store_rd_req_flowid)
+        ,.rd1_req_idx(rx_store_buf_rx_buf_store_rd_req_idx)
+        ,.rd1_req_rdy(rx_buf_store_rx_store_buf_rd_req_rdy)
+
+        ,.rd1_resp_val(rx_buf_store_rx_store_buf_rd_resp_val)
+        ,.rd1_resp_data(rx_buf_store_rx_store_buf_rd_resp_data)
+        ,.rd1_resp_rdy(rx_store_buf_rx_buf_store_rd_resp_rdy)
     )
 
     tx_buf_ptrs tx_payload_qs (
