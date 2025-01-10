@@ -33,7 +33,7 @@ import packet_struct_pkg::*;
 
     ,input  logic                               store_buf_commit_idx_wr_req_val
     ,input  logic   [FLOWID_W-1:0]              store_buf_commit_idx_wr_req_addr
-    ,input  tcp_buf_update                      store_buf_commit_idx_wr_req_data
+    ,input  tcp_buf_idx                         store_buf_commit_idx_wr_req_data
     ,output logic                               commit_idx_store_buf_wr_req_rdy
 
     ,input  logic                               store_buf_commit_idx_rd_req_val
@@ -65,7 +65,7 @@ import packet_struct_pkg::*;
     ,output tcp_buf_info                        rx_head_buf_app_rd_resp_data
     ,input  logic                               app_rx_head_buf_rd_resp_rdy
     
-    ,input  logic                               app_rx_commit_buf_rd_req_val
+    ,input  logic                               app_rx_commit_buf_rd_req_val // TODO fix
     ,input  logic   [FLOWID_W-1:0]              app_rx_commit_buf_rd_req_addr
     ,output logic                               rx_commit_buf_app_rd_req_rdy
 
@@ -555,7 +555,7 @@ import packet_struct_pkg::*;
         ,.rd1_resp_rdy  (curr_tx_state_rd_resp_rdy      )
     );
 
-    rx_buf_ptrs rx_ptrs ( 
+    rx_buf_idxs rx_idxs ( 
          .clk   (clk    )
         ,.rst   (rst    )
         
@@ -616,10 +616,17 @@ import packet_struct_pkg::*;
     
         ,.new_flow_val                  (new_flow_val                       )
         ,.new_flow_flowid               (new_flow_flow_id                   )
-        ,.new_rx_head_ptr               ('0)
-        ,.new_rx_tail_ptr               ('0)
+        ,.new_rx_head_idx               ('{idx:'0})
+        ,.new_rx_tail_idx               ('{idx:'0})
         ,.new_flow_rx_payload_ptrs_rdy  (new_flow_rx_payload_ptrs_rdy       )
     );
+
+    rx_buf_store rx_bufs (
+         .clk   (clk    )
+        ,.rst   (rst    )
+
+        ,.wr_req_val
+    )
 
     tx_buf_ptrs tx_payload_qs (
          .clk   (clk    )
