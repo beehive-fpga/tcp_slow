@@ -26,20 +26,20 @@ module tcp_rx_ctrl (
     ,input  logic                           curr_tx_state_rd_resp_val
     ,output logic                           curr_tx_state_rd_resp_rdy
     
-    ,output logic                           rx_pipe_rx_head_ptr_rd_req_val
-    ,input  logic                           rx_head_ptr_rx_pipe_rd_req_rdy
+    ,output logic                           rx_pipe_rx_head_idx_rd_req_val
+    ,input  logic                           rx_head_idx_rx_pipe_rd_req_rdy
 
-    ,input  logic                           rx_head_ptr_rx_pipe_rd_resp_val
-    ,output logic                           rx_pipe_rx_head_ptr_rd_resp_rdy
+    ,input  logic                           rx_head_idx_rx_pipe_rd_resp_val
+    ,output logic                           rx_pipe_rx_head_idx_rd_resp_rdy
     
-    ,output logic                           rx_pipe_rx_tail_ptr_wr_req_val
-    ,input  logic                           rx_tail_ptr_rx_pipe_wr_req_rdy
+    ,output logic                           rx_pipe_rx_tail_idx_wr_req_val
+    ,input  logic                           rx_tail_idx_rx_pipe_wr_req_rdy
 
-    ,output logic                           rx_pipe_rx_tail_ptr_rd_req_val
-    ,input  logic                           rx_tail_ptr_rx_pipe_rd_req_rdy
+    ,output logic                           rx_pipe_rx_tail_idx_rd_req_val
+    ,input  logic                           rx_tail_idx_rx_pipe_rd_req_rdy
 
-    ,input  logic                           rx_tail_ptr_rx_pipe_rd_resp_val
-    ,output logic                           rx_pipe_rx_tail_ptr_rd_resp_rdy
+    ,input  logic                           rx_tail_idx_rx_pipe_rd_resp_val
+    ,output logic                           rx_pipe_rx_tail_idx_rd_resp_rdy
     
     ,output logic                           rx_pipe_tx_head_ptr_wr_req_val
     ,input                                  tx_head_ptr_rx_pipe_wr_req_rdy
@@ -47,6 +47,8 @@ module tcp_rx_ctrl (
     ,output logic                           ctrl_datap_save_input
     ,output logic                           ctrl_datap_save_flow_state
     ,output logic                           ctrl_datap_save_calcs
+    ,output logic                           ctrl_datap_save_malloc_resp
+    ,input  logi                            datap_ctrl_payload_accepted
 
     ,output logic                           rx_sched_update_val
     ,input  logic                           sched_rx_update_rdy
@@ -58,6 +60,15 @@ module tcp_rx_ctrl (
 
     ,input  logic                           slow_path_done_val
     ,output logic                           slow_path_done_rdy
+
+    ,output                                 rx_pipe_rx_malloc_req_val
+    ,input                                  rx_malloc_rx_pipe_req_rdy
+
+    ,input                                  rx_malloc_rx_pipe_resp_val
+    ,output                                 rx_pipe_rx_malloc_resp_rdy
+
+    ,output                                 rx_pipe_rx_buf_store_wr_req_val   
+    ,input                                  rx_buf_store_rx_pipe_wr_req_rdy   
 );
 
     typedef enum logic[3:0] {
@@ -67,9 +78,12 @@ module tcp_rx_ctrl (
         WAIT_NEW_FLOW_SETUP = 4'd3,
         WAIT_STATE_RESP = 4'd4,
         CALCULATE = 4'd5,
-        WRITEBACK = 4'd6,
+        WRITEBACK1 = 4'd6,
         SCHEDULE = 4'd7,
         PKT_OUT = 4'd8,
+        WAIT_MALLOC_REQ = 4'd9;
+        WAIT_MALLOC_RESP = 4'd10;
+        WRITEBACK2 = 4'd11;
         UND = 'X
     } state_e;
 
@@ -91,21 +105,22 @@ module tcp_rx_ctrl (
         ctrl_datap_save_input = 1'b0;
         ctrl_datap_save_flow_state = 1'b0;
         ctrl_datap_save_calcs = 1'b0;
+        ctrl_datap_save_malloc_resp = 1'b0;
 
         tcp_rx_dst_hdr_val = 1'b0;
 
         curr_rx_state_rd_req_val = 1'b0;
         curr_tx_state_rd_req_val = 1'b0;
-        rx_pipe_rx_head_ptr_rd_req_val = 1'b0;
-        rx_pipe_rx_tail_ptr_rd_req_val = 1'b0;
+        rx_pipe_rx_head_idx_rd_req_val = 1'b0;
+        rx_pipe_rx_tail_idx_rd_req_val = 1'b0;
 
-        rx_pipe_rx_tail_ptr_wr_req_val = 1'b0;
+        rx_pipe_rx_tail_idx_wr_req_val = 1'b0;
         rx_pipe_tx_head_ptr_wr_req_val = 1'b0;
     
         curr_tx_state_rd_resp_rdy = 1'b0;
         curr_rx_state_rd_resp_rdy = 1'b0;
-        rx_pipe_rx_head_ptr_rd_resp_rdy = 1'b0;
-        rx_pipe_rx_tail_ptr_rd_resp_rdy = 1'b0;
+        rx_pipe_rx_head_idx_rd_resp_rdy = 1'b0;
+        rx_pipe_rx_tail_idx_rd_resp_rdy = 1'b0;
 
         next_rx_state_wr_req_val = 1'b0;
 
@@ -138,16 +153,16 @@ module tcp_rx_ctrl (
             READ_STATE: begin
                 curr_rx_state_rd_req_val = 1'b1;
                 curr_tx_state_rd_req_val = 1'b1;
-                rx_pipe_rx_head_ptr_rd_req_val = 1'b1;
-                rx_pipe_rx_tail_ptr_rd_req_val = 1'b1;
+                rx_pipe_rx_head_idx_rd_req_val = 1'b1;
+                rx_pipe_rx_tail_idx_rd_req_val = 1'b1;
 
                 curr_tx_state_rd_resp_rdy = 1'b1;
                 curr_rx_state_rd_resp_rdy = 1'b1;
-                rx_pipe_rx_head_ptr_rd_resp_rdy = 1'b1;
-                rx_pipe_rx_tail_ptr_rd_resp_rdy = 1'b1;
+                rx_pipe_rx_head_idx_rd_resp_rdy = 1'b1;
+                rx_pipe_rx_tail_idx_rd_resp_rdy = 1'b1;
 
                 if (curr_rx_state_rd_req_rdy & curr_tx_state_rd_req_rdy & 
-                    rx_head_ptr_rx_pipe_rd_req_rdy & rx_tail_ptr_rx_pipe_rd_req_rdy) begin
+                    rx_head_idx_rx_pipe_rd_req_rdy & rx_tail_idx_rx_pipe_rd_req_rdy) begin
                     state_next = WAIT_STATE_RESP;
                 end
             end
@@ -166,25 +181,47 @@ module tcp_rx_ctrl (
             WAIT_STATE_RESP: begin
                 ctrl_datap_save_flow_state = 1'b1;
                 if (curr_rx_state_rd_resp_val & curr_tx_state_rd_resp_val &
-                  rx_head_ptr_rx_pipe_rd_resp_val & rx_tail_ptr_rx_pipe_rd_resp_val) begin
+                  rx_head_idx_rx_pipe_rd_resp_val & rx_tail_idx_rx_pipe_rd_resp_val) begin
                     curr_rx_state_rd_resp_rdy = 1'b1;
                     curr_tx_state_rd_resp_rdy = 1'b1;
-                    rx_pipe_rx_head_ptr_rd_resp_rdy = 1'b1; // TODO: why is this and the line below done at the same time? in WB
-                    rx_pipe_rx_tail_ptr_rd_resp_rdy = 1'b1;
+                    rx_pipe_rx_head_idx_rd_resp_rdy = 1'b1;
+                    rx_pipe_rx_tail_idx_rd_resp_rdy = 1'b1;
+                    state_next = WAIT_MALLOC_REQ;
+                end
+            end
+            // TODO: future optimization to move malloc to READ_STATE, but then need to free if packet not accepted.
+            WAIT_MALLOC_REQ: begin
+                rx_pipe_rx_malloc_req_val = 1'b1;
+                if (rx_pipe_rx_malloc_req_val && rx_malloc_rx_pipe_req_ready) begin
+                    state_next = WAIT_MALLOC_RESP;
+                end
+            end
+            WAIT_MALLOC_RESP: begin
+                rx_pipe_rx_malloc_resp_rdy = 1'b1;
+                ctrl_datap_save_malloc_resp = 1'b1;
+                if (rx_malloc_rx_pipe_resp_vld && rx_pipe_rx_malloc_resp_rdy) begin
                     state_next = CALCULATE;
                 end
             end
             CALCULATE: begin
                 ctrl_datap_save_calcs = 1'b1;
-                state_next = WRITEBACK;
+                state_next = WRITEBACK1;
             end
-            WRITEBACK: begin
+            WRITEBACK1: begin
                 next_rx_state_wr_req_val = 1'b1;
-                rx_pipe_rx_tail_ptr_wr_req_val = 1'b1;
+                rx_pipe_rx_tail_idx_wr_req_val = 1'b1;
                 rx_pipe_tx_head_ptr_wr_req_val = 1'b1;
 
-                if (next_rx_state_wr_req_rdy & rx_tail_ptr_rx_pipe_wr_req_rdy &
+                if (next_rx_state_wr_req_rdy & rx_tail_idx_rx_pipe_wr_req_rdy &
                     tx_head_ptr_rx_pipe_wr_req_rdy) begin
+                    state_next = WRITEBACK2;
+                end
+            end
+            WRITEBACK2: begin
+                rx_pipe_rx_buf_store_wr_req_val = datap_ctrl_payload_accepted;
+                if (~datap_ctrl_payload_accepted) begin
+                    state_next = SCHEDULE;
+                end else if (rx_pipe_rx_buf_store_wr_req_val && rx_buf_store_rx_pipe_wr_req_rdy) begin
                     state_next = SCHEDULE;
                 end
             end

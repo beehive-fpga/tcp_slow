@@ -31,16 +31,16 @@ import packet_struct_pkg::*;
 
     ,input  smol_tx_state_struct            curr_tx_state_rd_resp_data
     
-    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_head_ptr_rd_req_addr
+    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_head_idx_rd_req_addr
 
-    ,input  logic   [RX_PAYLOAD_PTR_W:0]    rx_head_ptr_rx_pipe_rd_resp_data
+    ,input  logic   [RX_PAYLOAD_IDX_W:0]    rx_head_idx_rx_pipe_rd_resp_data
     
-    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_ptr_wr_req_addr
-    ,output logic   [RX_PAYLOAD_PTR_W:0]    rx_pipe_rx_tail_ptr_wr_req_data
+    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_idx_wr_req_addr
+    ,output logic   [RX_PAYLOAD_IDX_W:0]    rx_pipe_rx_tail_idx_wr_req_data
 
-    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_ptr_rd_req_addr
+    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_idx_rd_req_addr
 
-    ,input  logic   [RX_PAYLOAD_PTR_W:0]    rx_tail_ptr_rx_pipe_rd_resp_data
+    ,input  logic   [RX_PAYLOAD_IDX_W:0]    rx_tail_idx_rx_pipe_rd_resp_data
     
     ,output         [FLOWID_W-1:0]          rx_pipe_tx_head_ptr_wr_req_addr
     ,output         [TX_PAYLOAD_PTR_W:0]    rx_pipe_tx_head_ptr_wr_req_data
@@ -58,6 +58,8 @@ import packet_struct_pkg::*;
     ,input                                  ctrl_datap_save_input
     ,input                                  ctrl_datap_save_flow_state
     ,input                                  ctrl_datap_save_calcs
+    ,input                                  ctrl_datap_save_malloc_resp
+    ,output                                 datap_ctrl_payload_accepted
 
     ,output sched_cmd_struct                rx_sched_update_cmd
     
@@ -70,6 +72,17 @@ import packet_struct_pkg::*;
     ,output [FLOWID_W-1:0]                  slow_path_send_pkt_enqueue_flowid
     ,output [`IP_ADDR_W-1:0]                slow_path_send_pkt_enqueue_src_ip
     ,output [`IP_ADDR_W-1:0]                slow_path_send_pkt_enqueue_dst_ip
+
+    ,output         [MALLOC_LEN_W-1:0]      rx_pipe_rx_malloc_req_len // in the native impl, this must equal LEN_MAX
+
+    ,input                                  rx_malloc_rx_pipe_resp_success // 1 = addr is valid. 0 = addr is junk, retry your request or otherwise handle OOM.
+    ,input          [RX_PAYLOAD_PTR_W-1:0]  rx_malloc_rx_pipe_resp_addr
+
+    ,input          [RX_PAYLOAD_PTR_W:0]    rx_malloc_rx_pipe_approx_empty_space
+
+    ,output         [FLOWID_W-1:0]          rx_pipe_rx_buf_store_wr_req_flowid
+    ,output         [RX_PAYLOAD_IDX_W-1:0]  rx_pipe_rx_buf_store_wr_req_idx   
+    ,output         tcp_buf                 rx_pipe_rx_buf_store_wr_req_data  
 );
 
     localparam OUR_SEQ_NUM = 32'hff;
@@ -99,18 +112,23 @@ import packet_struct_pkg::*;
     logic   [`ACK_NUM_W-1:0]    their_ack_num;
     ack_state_struct            our_ack_state;
 
-    logic   [RX_PAYLOAD_PTR_W:0]    next_rx_tail_ptr_next;
-    logic   [RX_PAYLOAD_PTR_W:0]    next_rx_tail_ptr_reg;
-    logic   [RX_PAYLOAD_PTR_W:0]    next_rx_tail_ptr;
+    logic   [RX_PAYLOAD_IDX_W:0]    next_rx_tail_idx_next;
+    logic   [RX_PAYLOAD_IDX_W:0]    next_rx_tail_idx_reg;
+    logic   [RX_PAYLOAD_IDX_W:0]    next_rx_tail_idx;
 
     logic   [TX_PAYLOAD_PTR_W:0]    next_tx_head_ptr_next;
     logic   [TX_PAYLOAD_PTR_W:0]    next_tx_head_ptr_reg;
     logic   [TX_PAYLOAD_PTR_W:0]    next_tx_head_ptr;
 
-    logic   [RX_PAYLOAD_PTR_W:0]    curr_rx_head_reg;
-    logic   [RX_PAYLOAD_PTR_W:0]    curr_rx_tail_reg;
-    logic   [RX_PAYLOAD_PTR_W:0]    curr_rx_head_next;
-    logic   [RX_PAYLOAD_PTR_W:0]    curr_rx_tail_next;
+    logic   [RX_PAYLOAD_IDX_W:0]    curr_rx_head_reg;
+    logic   [RX_PAYLOAD_IDX_W:0]    curr_rx_tail_reg;
+    logic   [RX_PAYLOAD_IDX_W:0]    curr_rx_head_next;
+    logic   [RX_PAYLOAD_IDX_W:0]    curr_rx_tail_next;
+
+    logic malloc_success_reg;
+    logic malloc_success_next;
+    logic [RX_PAYLOAD_PTR_W-1:0] malloc_addr_reg;
+    logic [RX_PAYLOAD_PTR_W-1:0] malloc_addr_next;
 
     logic   [RX_PAYLOAD_PTR_W:0]    our_win;
 
@@ -132,8 +150,10 @@ import packet_struct_pkg::*;
         curr_tx_data_reg <= curr_tx_data_next;
         curr_rx_head_reg <= curr_rx_head_next;
         curr_rx_tail_reg <= curr_rx_tail_next;
+        malloc_success_reg <= malloc_success_next;
+        malloc_addr_reg <= malloc_addr_next;
         next_rx_state_reg <= next_rx_state_next;
-        next_rx_tail_ptr_reg <= next_rx_tail_ptr_next;
+        next_rx_tail_idx_reg <= next_rx_tail_idx_next;
         next_tx_head_ptr_reg <= next_tx_head_ptr_next;
         accept_payload_reg <= accept_payload_next;
         set_rt_reg <= set_rt_next;
@@ -141,7 +161,7 @@ import packet_struct_pkg::*;
 
     assign datap_slow_path_pkt = tcp_hdr_reg;
     assign next_rx_state_wr_req_data = next_rx_state_reg;
-    assign rx_pipe_rx_tail_ptr_wr_req_data = next_rx_tail_ptr_reg;
+    assign rx_pipe_rx_tail_idx_wr_req_data = next_rx_tail_idx_reg;
     assign rx_pipe_tx_head_ptr_wr_req_data = next_tx_head_ptr_reg;
     assign datap_ctrl_set_rt = set_rt_reg;
 
@@ -156,9 +176,9 @@ import packet_struct_pkg::*;
                                 ? flowid_manager_flowid
                                 : curr_flowid_reg;
 
-    assign rx_pipe_rx_head_ptr_rd_req_addr = curr_flowid_reg;
-    assign rx_pipe_rx_tail_ptr_rd_req_addr = curr_flowid_reg;
-    assign rx_pipe_rx_tail_ptr_wr_req_addr = curr_flowid_reg;
+    assign rx_pipe_rx_head_idx_rd_req_addr = curr_flowid_reg;
+    assign rx_pipe_rx_tail_idx_rd_req_addr = curr_flowid_reg;
+    assign rx_pipe_rx_tail_idx_wr_req_addr = curr_flowid_reg;
     assign rx_pipe_tx_head_ptr_wr_req_addr = curr_flowid_reg;
 
     assign curr_rx_state_rd_req_addr = curr_flowid_reg;
@@ -169,9 +189,19 @@ import packet_struct_pkg::*;
     assign tcp_rx_dst_pkt_accept = accept_payload_reg;
     assign tcp_rx_dst_payload_entry = payload_entry_reg;
 
+    assign rx_pipe_rx_malloc_req_len = MALLOC_LEN_MAX;
+
+    assign rx_pipe_rx_buf_store_wr_req_flowid = curr_flowid_reg;
+    assign rx_pipe_rx_buf_store_wr_req_idx = next_rx_tail_idx_reg[RX_PAYLOAD_IDX_W-1:0];
+    assign rx_pipe_rx_buf_store_wr_req_data.ptr = malloc_addr_reg;
+    assign rx_pipe_rx_buf_store_wr_req_data.len = MALLOC_LEN_MAX;
+    assign rx_pipe_rx_buf_store_wr_req_data.cap = MALLOC_LEN_MAX;
+
+    assign datap_ctrl_payload_accepted = accept_payload_reg;
+
     always_comb begin
         next_rx_state_next = '0;
-        next_rx_tail_ptr_next = next_rx_tail_ptr_reg;
+        next_rx_tail_idx_next = next_rx_tail_idx_reg;
         next_tx_head_ptr_next = next_tx_head_ptr_reg;
         accept_payload_next = accept_payload_reg;
         set_rt_next = set_rt_reg;
@@ -181,14 +211,14 @@ import packet_struct_pkg::*;
             next_rx_state_next.their_win_size = tcp_hdr_reg.win_size;
             next_rx_state_next.their_ack_num = their_ack_num;
             next_rx_state_next.our_win_size = our_win;
-            next_rx_tail_ptr_next = next_rx_tail_ptr;
+            next_rx_tail_idx_next = next_rx_tail_idx;
             next_tx_head_ptr_next = next_tx_head_ptr;
             accept_payload_next = accept_payload;
             set_rt_next = set_rt;
         end
         else begin
             next_rx_state_next = next_rx_state_reg;
-            next_rx_tail_ptr_next = next_rx_tail_ptr_reg;
+            next_rx_tail_idx_next = next_rx_tail_idx_reg;
             next_tx_head_ptr_next = next_tx_head_ptr_reg;
             accept_payload_next = accept_payload_reg;
             set_rt_next = set_rt_reg;
@@ -199,8 +229,8 @@ import packet_struct_pkg::*;
         if (ctrl_datap_save_flow_state) begin
             curr_rx_data_next = curr_rx_state_rd_resp_data;
             curr_tx_data_next = curr_tx_state_rd_resp_data;
-            curr_rx_head_next = rx_head_ptr_rx_pipe_rd_resp_data;
-            curr_rx_tail_next = rx_tail_ptr_rx_pipe_rd_resp_data;
+            curr_rx_head_next = rx_head_idx_rx_pipe_rd_resp_data;
+            curr_rx_tail_next = rx_tail_idx_rx_pipe_rd_resp_data;
         end
         else begin
             curr_rx_data_next = curr_rx_data_reg;
@@ -225,21 +255,34 @@ import packet_struct_pkg::*;
         end
     end
 
+    always_comb begin
+        if (ctrl_datap_save_malloc_resp) begin
+            malloc_success_next = rx_malloc_rx_pipe_resp_success;
+            malloc_addr_next = rx_malloc_rx_pipe_resp_addr;
+        end
+        else begin
+            malloc_success_next = malloc_success_reg;
+            malloc_addr_next = malloc_addr_reg;
+        end
+    end
+
 /***************************************************************
  * Fastpath logic
  **************************************************************/
     // process the receiving stream to generate the ACKs for their data send
     their_ack_process their_ack_process (
-         .their_curr_ack_num    (curr_rx_data_reg.their_ack_num     )
-        ,.packet_seq_num        (tcp_hdr_reg.seq_num                )
-        ,.packet_payload_len    (payload_entry_reg.payload_len      )
-        ,.rx_tail_ptr           (curr_rx_tail_reg                   )
-        ,.rx_head_ptr           (curr_rx_head_reg                   )
+         .their_curr_ack_num    (curr_rx_data_reg.their_ack_num         )
+        ,.packet_seq_num        (tcp_hdr_reg.seq_num                    )
+        ,.packet_payload_len    (payload_entry_reg.payload_len          )
+        ,.rx_tail_idx           (curr_rx_tail_reg                       )
+        ,.rx_head_idx           (curr_rx_head_reg                       )
+        ,.malloc_success        (malloc_success_reg                     )
+        ,.malloc_approx_space   (rx_malloc_rx_pipe_approx_empty_space   )
     
-        ,.their_next_ack_num    (their_ack_num                      )
-        ,.accept_payload        (accept_payload                     )
-        ,.next_rx_tail_ptr      (next_rx_tail_ptr                   )
-        ,.our_win               (our_win                            )
+        ,.their_next_ack_num    (their_ack_num                          )
+        ,.accept_payload        (accept_payload                         )
+        ,.next_rx_tail_idx      (next_rx_tail_idx                       )
+        ,.our_win               (our_win                                )
     );
 
     our_ack_process our_ack_process (
@@ -291,7 +334,7 @@ import packet_struct_pkg::*;
 
         new_flow_rx_state.their_ack_num = tcp_hdr_reg.seq_num + 1'b1;
         new_flow_rx_state.their_win_size = tcp_hdr_reg.win_size;
-        new_flow_rx_state.our_win_size = (1 << RX_PAYLOAD_PTR_W);
+        new_flow_rx_state.our_win_size = (1 << RX_PAYLOAD_PTR_W); // TODO: adjust to malloc empty space probs?
     end
 
     always_comb begin
@@ -313,7 +356,7 @@ import packet_struct_pkg::*;
         ,.seq_num               (OUR_SEQ_NUM                       )
         ,.ack_num               (tcp_hdr_reg.seq_num + 1           )
         ,.flags                 (`TCP_SYN | `TCP_ACK               )
-        ,.window                ({(PAYLOAD_PTR_W){1'b1}}           )
+        ,.window                ({(PAYLOAD_PTR_W){1'b1}}           ) // TODO: what is this? window is hardcoded?
         ,.tcp_hdr_req_rdy       ()
 
         ,.outbound_tcp_hdr_val   ()
