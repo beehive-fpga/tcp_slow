@@ -48,7 +48,7 @@ module tcp_rx_ctrl (
     ,output logic                           ctrl_datap_save_flow_state
     ,output logic                           ctrl_datap_save_calcs
     ,output logic                           ctrl_datap_save_malloc_resp
-    ,input  logi                            datap_ctrl_payload_accepted
+    ,input  logic                           datap_ctrl_payload_accepted
 
     ,output logic                           rx_sched_update_val
     ,input  logic                           sched_rx_update_rdy
@@ -81,9 +81,9 @@ module tcp_rx_ctrl (
         WRITEBACK1 = 4'd6,
         SCHEDULE = 4'd7,
         PKT_OUT = 4'd8,
-        WAIT_MALLOC_REQ = 4'd9;
-        WAIT_MALLOC_RESP = 4'd10;
-        WRITEBACK2 = 4'd11;
+        WAIT_MALLOC_REQ = 4'd9,
+        WAIT_MALLOC_RESP = 4'd10,
+        WRITEBACK2 = 4'd11,
         UND = 'X
     } state_e;
 
@@ -192,14 +192,14 @@ module tcp_rx_ctrl (
             // TODO: future optimization to move malloc to READ_STATE, but then need to free if packet not accepted.
             WAIT_MALLOC_REQ: begin
                 rx_pipe_rx_malloc_req_val = 1'b1;
-                if (rx_pipe_rx_malloc_req_val && rx_malloc_rx_pipe_req_ready) begin
+                if (rx_pipe_rx_malloc_req_val && rx_malloc_rx_pipe_req_rdy) begin
                     state_next = WAIT_MALLOC_RESP;
                 end
             end
             WAIT_MALLOC_RESP: begin
                 rx_pipe_rx_malloc_resp_rdy = 1'b1;
                 ctrl_datap_save_malloc_resp = 1'b1;
-                if (rx_malloc_rx_pipe_resp_vld && rx_pipe_rx_malloc_resp_rdy) begin
+                if (rx_malloc_rx_pipe_resp_val && rx_pipe_rx_malloc_resp_rdy) begin
                     state_next = CALCULATE;
                 end
             end

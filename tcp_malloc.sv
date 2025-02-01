@@ -136,7 +136,7 @@ logic reset_done = 0;
 assign reset_current_addr_next = reset_current_addr_reg + LEN_MAX;
 
 assign reset_fifo_empty = reset_done;
-assign reset_fifo_rd_data = '{reset_current_addr[PTR_W-1:0], LEN_MAX};
+assign reset_fifo_rd_data = '{reset_current_addr_reg[PTR_W-1:0], LEN_MAX};
 
 always_ff @(posedge clk) begin
     if (rst) begin
@@ -179,7 +179,7 @@ always @(posedge clk) begin
     end else begin
         free_bytes_cnt_reg <= free_bytes_cnt_next;
         if (free_bytes_cnt_next > BACKING_SIZE_EXACT) begin
-            $fatal("bug in free bytes calculation")
+            $fatal("bug in free bytes calculation");
         end
     end
 

@@ -108,6 +108,15 @@ import packet_struct_pkg::*;
     /*
     Buf Store
     */
+    ,input  logic                           app_rx_head_buf_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]          app_rx_head_buf_rd_req_flowid
+    ,input  logic   [POLLER_IDX_W-1:0]      app_rx_head_buf_rd_req_idx
+    ,output logic                           rx_head_buf_app_rd_req_rdy
+
+    ,output logic                           rx_head_buf_app_rd_resp_val
+    ,output         tcp_buf                 rx_head_buf_app_rd_resp_data
+    ,input  logic                           app_rx_head_buf_rd_resp_rdy
+
     ,input                                  rx_store_buf_rx_buf_store_rd_req_val
     ,input          [FLOWID_W-1:0]          rx_store_buf_rx_buf_store_rd_req_flowid
     ,input          [RX_PAYLOAD_IDX_W-1:0]  rx_store_buf_rx_buf_store_rd_req_idx
@@ -154,12 +163,12 @@ import packet_struct_pkg::*;
     logic                           rx_head_idx_rx_pipe_rd_req_rdy;
 
     logic                           rx_head_idx_rx_pipe_rd_resp_val;
-    logic   tcp_buf_idx             rx_head_idx_rx_pipe_rd_resp_data;
+    tcp_buf_idx                     rx_head_idx_rx_pipe_rd_resp_data;
     logic                           rx_pipe_rx_head_idx_rd_resp_rdy;
     
     logic                           rx_pipe_rx_tail_idx_wr_req_val;
     logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_idx_wr_req_addr;
-    logic   tcp_buf_idx             rx_pipe_rx_tail_idx_wr_req_data;
+    tcp_buf_idx                     rx_pipe_rx_tail_idx_wr_req_data;
     logic                           rx_tail_idx_rx_pipe_wr_req_rdy;
 
     logic                           rx_pipe_rx_tail_idx_rd_req_val;
@@ -167,7 +176,7 @@ import packet_struct_pkg::*;
     logic                           rx_tail_idx_rx_pipe_rd_req_rdy;
 
     logic                           rx_tail_idx_rx_pipe_rd_resp_val;
-    logic   tcp_buf_idx             rx_tail_idx_rx_pipe_rd_resp_data;
+    tcp_buf_idx                     rx_tail_idx_rx_pipe_rd_resp_data;
     logic                           rx_pipe_rx_tail_idx_rd_resp_rdy;
     
     logic                           rx_pipe_tx_head_ptr_wr_req_val;
@@ -676,21 +685,30 @@ import packet_struct_pkg::*;
          .clk   (clk    )
         ,.rst   (rst    )
 
-        ,.wr_req_val(rx_pipe_rx_buf_store_wr_req_val)
-        ,.wr_req_flowid(rx_pipe_rx_buf_store_wr_req_flowid)
-        ,.wr_req_idx(rx_pipe_rx_buf_store_wr_req_idx)
-        ,.wr_req_data(rx_pipe_rx_buf_store_wr_req_data)
-        ,.wr_req_rdy(rx_buf_store_rx_pipe_wr_req_rdy)
-    
-        ,.rd1_req_val(rx_store_buf_rx_buf_store_rd_req_val)
-        ,.rd1_req_flowid(rx_store_buf_rx_buf_store_rd_req_flowid)
-        ,.rd1_req_idx(rx_store_buf_rx_buf_store_rd_req_idx)
-        ,.rd1_req_rdy(rx_buf_store_rx_store_buf_rd_req_rdy)
+        ,.wr_req_val        (rx_pipe_rx_buf_store_wr_req_val            )
+        ,.wr_req_flowid     (rx_pipe_rx_buf_store_wr_req_flowid         )
+        ,.wr_req_idx        (rx_pipe_rx_buf_store_wr_req_idx            )
+        ,.wr_req_data       (rx_pipe_rx_buf_store_wr_req_data           )
+        ,.wr_req_rdy        (rx_buf_store_rx_pipe_wr_req_rdy            )
 
-        ,.rd1_resp_val(rx_buf_store_rx_store_buf_rd_resp_val)
-        ,.rd1_resp_data(rx_buf_store_rx_store_buf_rd_resp_data)
-        ,.rd1_resp_rdy(rx_store_buf_rx_buf_store_rd_resp_rdy)
-    )
+        ,.rd0_req_val       (app_rx_head_buf_rd_req_val                 )
+        ,.rd0_req_flowid    (app_rx_head_buf_rd_req_flowid              )
+        ,.rd0_req_idx       (app_rx_head_buf_rd_req_idx                 )
+        ,.rd0_req_rdy       (rx_head_buf_app_rd_req_rdy                 )
+
+        ,.rd0_resp_val       (rx_head_buf_app_rd_resp_val               )
+        ,.rd0_resp_data      (rx_head_buf_app_rd_resp_data              )
+        ,.rd0_resp_rdy       (app_rx_head_buf_rd_resp_rdy               )
+    
+        ,.rd1_req_val       (rx_store_buf_rx_buf_store_rd_req_val       )
+        ,.rd1_req_flowid    (rx_store_buf_rx_buf_store_rd_req_flowid    )
+        ,.rd1_req_idx       (rx_store_buf_rx_buf_store_rd_req_idx       )
+        ,.rd1_req_rdy       (rx_buf_store_rx_store_buf_rd_req_rdy       )
+
+        ,.rd1_resp_val      (rx_buf_store_rx_store_buf_rd_resp_val      )
+        ,.rd1_resp_data     (rx_buf_store_rx_store_buf_rd_resp_data     )
+        ,.rd1_resp_rdy      (rx_store_buf_rx_buf_store_rd_resp_rdy      )
+    );
 
     tx_buf_ptrs tx_payload_qs (
          .clk   (clk    )

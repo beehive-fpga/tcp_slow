@@ -37,7 +37,7 @@ import tcp_pkg::*;
         accept_payload = 1'b0;
 
         // if we've received the packet we expect, then ack for the next byte
-        if (malloc_success & rx_buf_has_space & (packet_seq_num == their_curr_ack_num)) begin
+        if (malloc_success & rx_buf_has_idx & (packet_seq_num == their_curr_ack_num)) begin
             accept_payload = 1'b1;
             their_next_ack_num = packet_seq_num + packet_payload_len;
             next_rx_tail_idx = rx_tail_idx + 1;
