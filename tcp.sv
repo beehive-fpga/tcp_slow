@@ -7,7 +7,7 @@ import packet_struct_pkg::*;
      input clk
     ,input rst
 
-    ,input                                      src_tcp_rx_hdr_val
+    ,input                                      src_tcp_rx_hdr_val // tmp queue not empty (i think)
     ,output logic                               tcp_src_rx_hdr_rdy
     ,input          [`IP_ADDR_W-1:0]            src_tcp_rx_src_ip
     ,input          [`IP_ADDR_W-1:0]            src_tcp_rx_dst_ip
@@ -31,18 +31,18 @@ import packet_struct_pkg::*;
     ,output payload_buf_struct                  tcp_rx_dst_payload_entry
     ,input  logic                               dst_tcp_rx_hdr_rdy
 
-    ,input  logic                               store_buf_commit_ptr_wr_req_val
-    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_ptr_wr_req_addr
-    ,input  logic   [RX_PAYLOAD_PTR_W:0]        store_buf_commit_ptr_wr_req_data
-    ,output logic                               commit_ptr_store_buf_wr_req_rdy
+    ,input  logic                               store_buf_commit_idx_wr_req_val
+    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_idx_wr_req_addr
+    ,input  tcp_buf_idx                         store_buf_commit_idx_wr_req_data
+    ,output logic                               commit_idx_store_buf_wr_req_rdy
 
-    ,input  logic                               store_buf_commit_ptr_rd_req_val
-    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_ptr_rd_req_addr
-    ,output logic                               commit_ptr_store_buf_rd_req_rdy
+    ,input  logic                               store_buf_commit_idx_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              store_buf_commit_idx_rd_req_addr
+    ,output logic                               commit_idx_store_buf_rd_req_rdy
 
-    ,output logic                               commit_ptr_store_buf_rd_resp_val
-    ,output logic   [RX_PAYLOAD_PTR_W:0]        commit_ptr_store_buf_rd_resp_data
-    ,input  logic                               store_buf_commit_ptr_rd_resp_rdy
+    ,output logic                               commit_idx_store_buf_rd_resp_val
+    ,output tcp_buf_idx                         commit_idx_store_buf_rd_resp_data
+    ,input  logic                               store_buf_commit_idx_rd_resp_rdy
 
     /********************************
      * App interface
@@ -52,26 +52,31 @@ import packet_struct_pkg::*;
     ,output four_tuple_struct                   app_new_flow_entry
     ,input  logic                               app_new_flow_notif_rdy
     
-    ,input  logic                               app_rx_head_ptr_wr_req_val
-    ,input  logic   [FLOWID_W-1:0]              app_rx_head_ptr_wr_req_addr
-    ,input  logic   [RX_PAYLOAD_PTR_W:0]        app_rx_head_ptr_wr_req_data
-    ,output logic                               rx_head_ptr_app_wr_req_rdy
+    ,input  logic                               app_rx_head_idx_wr_req_val
+    ,input  logic   [FLOWID_W-1:0]              app_rx_head_idx_wr_req_addr
+    ,input  tcp_buf_idx                         app_rx_head_idx_wr_req_data
+    ,output logic                               rx_head_idx_app_wr_req_rdy
 
-    ,input  logic                               app_rx_head_ptr_rd_req_val
-    ,input  logic   [FLOWID_W-1:0]              app_rx_head_ptr_rd_req_addr
-    ,output logic                               rx_head_ptr_app_rd_req_rdy
+    ,input  logic                               app_rx_head_idx_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              app_rx_head_idx_rd_req_addr
+    ,output logic                               rx_head_idx_app_rd_req_rdy
     
-    ,output logic                               rx_head_ptr_app_rd_resp_val
-    ,output logic   [RX_PAYLOAD_PTR_W:0]        rx_head_ptr_app_rd_resp_data
-    ,input  logic                               app_rx_head_ptr_rd_resp_rdy
+    ,output logic                               rx_head_idx_app_rd_resp_val
+    ,output tcp_buf_idx                         rx_head_idx_app_rd_resp_data
+    ,input  logic                               app_rx_head_idx_rd_resp_rdy
     
-    ,input  logic                               app_rx_commit_ptr_rd_req_val
-    ,input  logic   [FLOWID_W-1:0]              app_rx_commit_ptr_rd_req_addr
-    ,output logic                               rx_commit_ptr_app_rd_req_rdy
+    ,input  logic                               app_rx_commit_idx_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              app_rx_commit_idx_rd_req_addr
+    ,output logic                               rx_commit_idx_app_rd_req_rdy
 
-    ,output logic                               rx_commit_ptr_app_rd_resp_val
-    ,output logic   [RX_PAYLOAD_PTR_W:0]        rx_commit_ptr_app_rd_resp_data
-    ,input  logic                               app_rx_commit_ptr_rd_resp_rdy
+    ,output logic                               rx_commit_idx_app_rd_resp_val
+    ,output tcp_buf_idx                         rx_commit_idx_app_rd_resp_data
+    ,input  logic                               app_rx_commit_idx_rd_resp_rdy
+
+    ,input  logic                               app_rx_free_req_val
+    ,input  logic   [RX_PAYLOAD_PTR_W-1:0]      app_rx_free_req_addr
+    ,input  logic   [MALLOC_LEN_W-1:0]          app_rx_free_req_len
+    ,output logic                               rx_free_app_req_rdy
     
     ,input                                      app_tx_head_ptr_rd_req_val
     ,input          [FLOWID_W-1:0]              app_tx_head_ptr_rd_req_addr
@@ -99,6 +104,27 @@ import packet_struct_pkg::*;
     ,input  logic                               app_sched_update_val
     ,input  sched_cmd_struct                    app_sched_update_cmd
     ,output logic                               sched_app_update_rdy
+
+    /*
+    Buf Store
+    */
+    ,input  logic                           app_rx_head_buf_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]          app_rx_head_buf_rd_req_flowid
+    ,input  logic   [RX_PAYLOAD_IDX_W-1:0]  app_rx_head_buf_rd_req_idx
+    ,output logic                           rx_head_buf_app_rd_req_rdy
+
+    ,output logic                           rx_head_buf_app_rd_resp_val
+    ,output         tcp_buf                 rx_head_buf_app_rd_resp_data
+    ,input  logic                           app_rx_head_buf_rd_resp_rdy
+
+    ,input                                  rx_store_buf_rx_buf_store_rd_req_val
+    ,input          [FLOWID_W-1:0]          rx_store_buf_rx_buf_store_rd_req_flowid
+    ,input          [RX_PAYLOAD_IDX_W-1:0]  rx_store_buf_rx_buf_store_rd_req_idx
+    ,output logic                           rx_buf_store_rx_store_buf_rd_req_rdy
+
+    ,output logic                           rx_buf_store_rx_store_buf_rd_resp_val
+    ,output         tcp_buf                 rx_buf_store_rx_store_buf_rd_resp_data
+    ,input                                  rx_store_buf_rx_buf_store_rd_resp_rdy
     
 );
     
@@ -132,26 +158,26 @@ import packet_struct_pkg::*;
     logic   [TX_PAYLOAD_PTR_W:0]    new_tx_tail_ptr;
     logic                           new_flow_rdy;
     
-    logic                           rx_pipe_rx_head_ptr_rd_req_val;
-    logic   [FLOWID_W-1:0]          rx_pipe_rx_head_ptr_rd_req_addr;
-    logic                           rx_head_ptr_rx_pipe_rd_req_rdy;
+    logic                           rx_pipe_rx_head_idx_rd_req_val;
+    logic   [FLOWID_W-1:0]          rx_pipe_rx_head_idx_rd_req_addr;
+    logic                           rx_head_idx_rx_pipe_rd_req_rdy;
 
-    logic                           rx_head_ptr_rx_pipe_rd_resp_val;
-    logic   [RX_PAYLOAD_PTR_W:0]    rx_head_ptr_rx_pipe_rd_resp_data;
-    logic                           rx_pipe_rx_head_ptr_rd_resp_rdy;
+    logic                           rx_head_idx_rx_pipe_rd_resp_val;
+    tcp_buf_idx                     rx_head_idx_rx_pipe_rd_resp_data;
+    logic                           rx_pipe_rx_head_idx_rd_resp_rdy;
     
-    logic                           rx_pipe_rx_tail_ptr_wr_req_val;
-    logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_ptr_wr_req_addr;
-    logic   [RX_PAYLOAD_PTR_W:0]    rx_pipe_rx_tail_ptr_wr_req_data;
-    logic                           rx_tail_ptr_rx_pipe_wr_req_rdy;
+    logic                           rx_pipe_rx_tail_idx_wr_req_val;
+    logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_idx_wr_req_addr;
+    tcp_buf_idx                     rx_pipe_rx_tail_idx_wr_req_data;
+    logic                           rx_tail_idx_rx_pipe_wr_req_rdy;
 
-    logic                           rx_pipe_rx_tail_ptr_rd_req_val;
-    logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_ptr_rd_req_addr;
-    logic                           rx_tail_ptr_rx_pipe_rd_req_rdy;
+    logic                           rx_pipe_rx_tail_idx_rd_req_val;
+    logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_idx_rd_req_addr;
+    logic                           rx_tail_idx_rx_pipe_rd_req_rdy;
 
-    logic                           rx_tail_ptr_rx_pipe_rd_resp_val;
-    logic   [RX_PAYLOAD_PTR_W:0]    rx_tail_ptr_rx_pipe_rd_resp_data;
-    logic                           rx_pipe_rx_tail_ptr_rd_resp_rdy;
+    logic                           rx_tail_idx_rx_pipe_rd_resp_val;
+    tcp_buf_idx                     rx_tail_idx_rx_pipe_rd_resp_data;
+    logic                           rx_pipe_rx_tail_idx_rd_resp_rdy;
     
     logic                           rx_pipe_tx_head_ptr_wr_req_val;
     logic   [FLOWID_W-1:0]          rx_pipe_tx_head_ptr_wr_req_addr;
@@ -236,6 +262,23 @@ import packet_struct_pkg::*;
     logic                           tx_state_tx_pipe_rd_resp_val;
     smol_tx_state_struct            tx_state_tx_pipe_rd_resp_data;
     logic                           tx_pipe_tx_state_rd_resp_rdy;
+
+    logic                           rx_pipe_rx_malloc_req_val;
+    logic   [MALLOC_LEN_W-1:0]      rx_pipe_rx_malloc_req_len;
+    logic                           rx_malloc_rx_pipe_req_rdy;
+
+    logic                           rx_malloc_rx_pipe_resp_val;
+    logic                           rx_malloc_rx_pipe_resp_success;
+    logic   [RX_PAYLOAD_PTR_W-1:0]  rx_malloc_rx_pipe_resp_addr;
+    logic                           rx_pipe_rx_malloc_resp_rdy;
+
+    logic   [RX_PAYLOAD_PTR_W:0]    rx_malloc_rx_pipe_approx_empty_space;
+
+    logic                           rx_pipe_rx_buf_store_wr_req_val;
+    logic   [FLOWID_W-1:0]          rx_pipe_rx_buf_store_wr_req_flowid;
+    logic   [RX_PAYLOAD_IDX_W-1:0]  rx_pipe_rx_buf_store_wr_req_idx;
+    tcp_buf                         rx_pipe_rx_buf_store_wr_req_data;
+    logic                           rx_buf_store_rx_pipe_wr_req_rdy;
 
     assign new_flow_rdy = new_flow_rx_state_rdy & 
                         & new_flow_rx_payload_ptrs_rdy & new_flow_tx_state_rdy & new_flow_tx_payload_ptrs_rdy
@@ -333,26 +376,26 @@ import packet_struct_pkg::*;
         ,.curr_tx_state_rd_resp_data        (curr_tx_state_rd_resp_data         )
         ,.curr_tx_state_rd_resp_rdy         (curr_tx_state_rd_resp_rdy          )
         
-        ,.rx_pipe_rx_head_ptr_rd_req_val    (rx_pipe_rx_head_ptr_rd_req_val     )
-        ,.rx_pipe_rx_head_ptr_rd_req_addr   (rx_pipe_rx_head_ptr_rd_req_addr    )
-        ,.rx_head_ptr_rx_pipe_rd_req_rdy    (rx_head_ptr_rx_pipe_rd_req_rdy     )
+        ,.rx_pipe_rx_head_idx_rd_req_val    (rx_pipe_rx_head_idx_rd_req_val     )
+        ,.rx_pipe_rx_head_idx_rd_req_addr   (rx_pipe_rx_head_idx_rd_req_addr    )
+        ,.rx_head_idx_rx_pipe_rd_req_rdy    (rx_head_idx_rx_pipe_rd_req_rdy     )
                                                                                 
-        ,.rx_head_ptr_rx_pipe_rd_resp_val   (rx_head_ptr_rx_pipe_rd_resp_val    )
-        ,.rx_head_ptr_rx_pipe_rd_resp_data  (rx_head_ptr_rx_pipe_rd_resp_data   )
-        ,.rx_pipe_rx_head_ptr_rd_resp_rdy   (rx_pipe_rx_head_ptr_rd_resp_rdy    )
+        ,.rx_head_idx_rx_pipe_rd_resp_val   (rx_head_idx_rx_pipe_rd_resp_val    )
+        ,.rx_head_idx_rx_pipe_rd_resp_data  (rx_head_idx_rx_pipe_rd_resp_data.idx) // TODO: probably just change tcp_rx to accept the struct lol
+        ,.rx_pipe_rx_head_idx_rd_resp_rdy   (rx_pipe_rx_head_idx_rd_resp_rdy    )
                                                                                 
-        ,.rx_pipe_rx_tail_ptr_wr_req_val    (rx_pipe_rx_tail_ptr_wr_req_val     )
-        ,.rx_pipe_rx_tail_ptr_wr_req_addr   (rx_pipe_rx_tail_ptr_wr_req_addr    )
-        ,.rx_pipe_rx_tail_ptr_wr_req_data   (rx_pipe_rx_tail_ptr_wr_req_data    )
-        ,.rx_tail_ptr_rx_pipe_wr_req_rdy    (rx_tail_ptr_rx_pipe_wr_req_rdy     )
+        ,.rx_pipe_rx_tail_idx_wr_req_val    (rx_pipe_rx_tail_idx_wr_req_val     )
+        ,.rx_pipe_rx_tail_idx_wr_req_addr   (rx_pipe_rx_tail_idx_wr_req_addr    )
+        ,.rx_pipe_rx_tail_idx_wr_req_data   (rx_pipe_rx_tail_idx_wr_req_data.idx)
+        ,.rx_tail_ptr_rx_pipe_wr_req_rdy    (rx_tail_idx_rx_pipe_wr_req_rdy     )
                                                                                 
-        ,.rx_pipe_rx_tail_ptr_rd_req_val    (rx_pipe_rx_tail_ptr_rd_req_val     )
-        ,.rx_pipe_rx_tail_ptr_rd_req_addr   (rx_pipe_rx_tail_ptr_rd_req_addr    )
-        ,.rx_tail_ptr_rx_pipe_rd_req_rdy    (rx_tail_ptr_rx_pipe_rd_req_rdy     )
+        ,.rx_pipe_rx_tail_idx_rd_req_val    (rx_pipe_rx_tail_idx_rd_req_val     )
+        ,.rx_pipe_rx_tail_idx_rd_req_addr   (rx_pipe_rx_tail_idx_rd_req_addr    )
+        ,.rx_tail_idx_rx_pipe_rd_req_rdy    (rx_tail_idx_rx_pipe_rd_req_rdy     )
                                                                                 
-        ,.rx_tail_ptr_rx_pipe_rd_resp_val   (rx_tail_ptr_rx_pipe_rd_resp_val    )
-        ,.rx_tail_ptr_rx_pipe_rd_resp_data  (rx_tail_ptr_rx_pipe_rd_resp_data   )
-        ,.rx_pipe_rx_tail_ptr_rd_resp_rdy   (rx_pipe_rx_tail_ptr_rd_resp_rdy    )
+        ,.rx_tail_idx_rx_pipe_rd_resp_val   (rx_tail_idx_rx_pipe_rd_resp_val    )
+        ,.rx_tail_idx_rx_pipe_rd_resp_data  (rx_tail_idx_rx_pipe_rd_resp_data.idx)
+        ,.rx_pipe_rx_tail_idx_rd_resp_rdy   (rx_pipe_rx_tail_idx_rd_resp_rdy    )
         
         ,.rx_pipe_tx_head_ptr_wr_req_val    (rx_pipe_tx_head_ptr_wr_req_val     )
         ,.rx_pipe_tx_head_ptr_wr_req_addr   (rx_pipe_tx_head_ptr_wr_req_addr    )
@@ -369,6 +412,23 @@ import packet_struct_pkg::*;
         ,.rx_sched_update_val               (rx_sched_update_val                )
         ,.rx_sched_update_cmd               (rx_sched_update_cmd                )
         ,.sched_rx_update_rdy               (sched_rx_update_rdy                )
+
+        ,.rx_pipe_rx_malloc_req_val         (rx_pipe_rx_malloc_req_val          )
+        ,.rx_pipe_rx_malloc_req_len         (rx_pipe_rx_malloc_req_len          )
+        ,.rx_malloc_rx_pipe_req_rdy         (rx_malloc_rx_pipe_req_rdy          )
+
+        ,.rx_malloc_rx_pipe_resp_val        (rx_malloc_rx_pipe_resp_val         )
+        ,.rx_malloc_rx_pipe_resp_success    (rx_malloc_rx_pipe_resp_success     )
+        ,.rx_malloc_rx_pipe_resp_addr       (rx_malloc_rx_pipe_resp_addr        )
+        ,.rx_pipe_rx_malloc_resp_rdy        (rx_pipe_rx_malloc_resp_rdy         )
+
+        ,.rx_malloc_rx_pipe_approx_empty_space(rx_malloc_rx_pipe_approx_empty_space)
+
+        ,.rx_pipe_rx_buf_store_wr_req_val   (rx_pipe_rx_buf_store_wr_req_val    )
+        ,.rx_pipe_rx_buf_store_wr_req_flowid(rx_pipe_rx_buf_store_wr_req_flowid )
+        ,.rx_pipe_rx_buf_store_wr_req_idx   (rx_pipe_rx_buf_store_wr_req_idx    )
+        ,.rx_pipe_rx_buf_store_wr_req_data  (rx_pipe_rx_buf_store_wr_req_data   )
+        ,.rx_buf_store_rx_pipe_wr_req_rdy   (rx_buf_store_rx_pipe_wr_req_rdy    )
     );
 
     tcp_tx tx_engine (
@@ -555,70 +615,99 @@ import packet_struct_pkg::*;
         ,.rd1_resp_rdy  (curr_tx_state_rd_resp_rdy      )
     );
 
-    rx_buf_ptrs rx_ptrs ( 
+    rx_buf_idxs rx_idxs ( 
          .clk   (clk    )
         ,.rst   (rst    )
         
-        ,.head_ptr_wr_req_val           (app_rx_head_ptr_wr_req_val         )
-        ,.head_ptr_wr_req_addr          (app_rx_head_ptr_wr_req_addr        )
-        ,.head_ptr_wr_req_data          (app_rx_head_ptr_wr_req_data        )
-        ,.head_ptr_wr_req_rdy           (rx_head_ptr_app_wr_req_rdy         )
+        ,.head_idx_wr_req_val           (app_rx_head_idx_wr_req_val         )
+        ,.head_idx_wr_req_addr          (app_rx_head_idx_wr_req_addr        )
+        ,.head_idx_wr_req_data          (app_rx_head_idx_wr_req_data        )
+        ,.head_idx_wr_req_rdy           (rx_head_idx_app_wr_req_rdy         )
     
-        ,.head_ptr_rd0_req_val          (app_rx_head_ptr_rd_req_val         )
-        ,.head_ptr_rd0_req_addr         (app_rx_head_ptr_rd_req_addr        )
-        ,.head_ptr_rd0_req_rdy          (rx_head_ptr_app_rd_req_rdy         )
+        ,.head_idx_rd0_req_val          (app_rx_head_idx_rd_req_val         )
+        ,.head_idx_rd0_req_addr         (app_rx_head_idx_rd_req_addr        )
+        ,.head_idx_rd0_req_rdy          (rx_head_idx_app_rd_req_rdy         )
     
-        ,.head_ptr_rd0_resp_val         (rx_head_ptr_app_rd_resp_val        )
-        ,.head_ptr_rd0_resp_data        (rx_head_ptr_app_rd_resp_data       )
-        ,.head_ptr_rd0_resp_rdy         (app_rx_head_ptr_rd_resp_rdy        )
+        ,.head_idx_rd0_resp_val         (rx_head_idx_app_rd_resp_val        )
+        ,.head_idx_rd0_resp_data        (rx_head_idx_app_rd_resp_data       )
+        ,.head_idx_rd0_resp_rdy         (app_rx_head_idx_rd_resp_rdy        )
         
-        ,.head_ptr_rd1_req_val          (rx_pipe_rx_head_ptr_rd_req_val     )
-        ,.head_ptr_rd1_req_addr         (rx_pipe_rx_head_ptr_rd_req_addr    )
-        ,.head_ptr_rd1_req_rdy          (rx_head_ptr_rx_pipe_rd_req_rdy     )
+        ,.head_idx_rd1_req_val          (rx_pipe_rx_head_idx_rd_req_val     )
+        ,.head_idx_rd1_req_addr         (rx_pipe_rx_head_idx_rd_req_addr    )
+        ,.head_idx_rd1_req_rdy          (rx_head_idx_rx_pipe_rd_req_rdy     )
     
-        ,.head_ptr_rd1_resp_val         (rx_head_ptr_rx_pipe_rd_resp_val    )
-        ,.head_ptr_rd1_resp_data        (rx_head_ptr_rx_pipe_rd_resp_data   )
-        ,.head_ptr_rd1_resp_rdy         (rx_pipe_rx_head_ptr_rd_resp_rdy    )
+        ,.head_idx_rd1_resp_val         (rx_head_idx_rx_pipe_rd_resp_val    )
+        ,.head_idx_rd1_resp_data        (rx_head_idx_rx_pipe_rd_resp_data   )
+        ,.head_idx_rd1_resp_rdy         (rx_pipe_rx_head_idx_rd_resp_rdy    )
         
-        ,.commit_ptr_wr_req_val         (store_buf_commit_ptr_wr_req_val    )
-        ,.commit_ptr_wr_req_addr        (store_buf_commit_ptr_wr_req_addr   )
-        ,.commit_ptr_wr_req_data        (store_buf_commit_ptr_wr_req_data   )
-        ,.commit_ptr_wr_req_rdy         (commit_ptr_store_buf_wr_req_rdy    )
+        ,.commit_idx_wr_req_val         (store_buf_commit_idx_wr_req_val    )
+        ,.commit_idx_wr_req_addr        (store_buf_commit_idx_wr_req_addr   )
+        ,.commit_idx_wr_req_data        (store_buf_commit_idx_wr_req_data   )
+        ,.commit_idx_wr_req_rdy         (commit_idx_store_buf_wr_req_rdy    )
     
-        ,.commit_ptr_rd0_req_val        (store_buf_commit_ptr_rd_req_val    )
-        ,.commit_ptr_rd0_req_addr       (store_buf_commit_ptr_rd_req_addr   )
-        ,.commit_ptr_rd0_req_rdy        (commit_ptr_store_buf_rd_req_rdy    )
+        ,.commit_idx_rd0_req_val        (store_buf_commit_idx_rd_req_val    )
+        ,.commit_idx_rd0_req_addr       (store_buf_commit_idx_rd_req_addr   )
+        ,.commit_idx_rd0_req_rdy        (commit_idx_store_buf_rd_req_rdy    )
     
-        ,.commit_ptr_rd0_resp_val       (commit_ptr_store_buf_rd_resp_val   )
-        ,.commit_ptr_rd0_resp_data      (commit_ptr_store_buf_rd_resp_data  )
-        ,.commit_ptr_rd0_resp_rdy       (store_buf_commit_ptr_rd_resp_rdy   )
+        ,.commit_idx_rd0_resp_val       (commit_idx_store_buf_rd_resp_val   )
+        ,.commit_idx_rd0_resp_data      (commit_idx_store_buf_rd_resp_data  )
+        ,.commit_idx_rd0_resp_rdy       (store_buf_commit_idx_rd_resp_rdy   )
         
-        ,.commit_ptr_rd1_req_val        (app_rx_commit_ptr_rd_req_val       )
-        ,.commit_ptr_rd1_req_addr       (app_rx_commit_ptr_rd_req_addr      )
-        ,.commit_ptr_rd1_req_rdy        (rx_commit_ptr_app_rd_req_rdy       )
+        ,.commit_idx_rd1_req_val        (app_rx_commit_idx_rd_req_val       )
+        ,.commit_idx_rd1_req_addr       (app_rx_commit_idx_rd_req_addr      )
+        ,.commit_idx_rd1_req_rdy        (rx_commit_idx_app_rd_req_rdy       )
     
-        ,.commit_ptr_rd1_resp_val       (rx_commit_ptr_app_rd_resp_val      )
-        ,.commit_ptr_rd1_resp_data      (rx_commit_ptr_app_rd_resp_data     )
-        ,.commit_ptr_rd1_resp_rdy       (app_rx_commit_ptr_rd_resp_rdy      )
+        ,.commit_idx_rd1_resp_val       (rx_commit_idx_app_rd_resp_val      )
+        ,.commit_idx_rd1_resp_data      (rx_commit_idx_app_rd_resp_data     )
+        ,.commit_idx_rd1_resp_rdy       (app_rx_commit_idx_rd_resp_rdy      )
         
-        ,.tail_ptr_wr_req_val           (rx_pipe_rx_tail_ptr_wr_req_val     )
-        ,.tail_ptr_wr_req_addr          (rx_pipe_rx_tail_ptr_wr_req_addr    )
-        ,.tail_ptr_wr_req_data          (rx_pipe_rx_tail_ptr_wr_req_data    )
-        ,.tail_ptr_wr_req_rdy           (rx_tail_ptr_rx_pipe_wr_req_rdy     )
+        ,.tail_idx_wr_req_val           (rx_pipe_rx_tail_idx_wr_req_val     )
+        ,.tail_idx_wr_req_addr          (rx_pipe_rx_tail_idx_wr_req_addr    )
+        ,.tail_idx_wr_req_data          (rx_pipe_rx_tail_idx_wr_req_data    )
+        ,.tail_idx_wr_req_rdy           (rx_tail_idx_rx_pipe_wr_req_rdy     )
     
-        ,.tail_ptr_rd_req_val           (rx_pipe_rx_tail_ptr_rd_req_val     )
-        ,.tail_ptr_rd_req_addr          (rx_pipe_rx_tail_ptr_rd_req_addr    )
-        ,.tail_ptr_rd_req_rdy           (rx_tail_ptr_rx_pipe_rd_req_rdy     )
+        ,.tail_idx_rd_req_val           (rx_pipe_rx_tail_idx_rd_req_val     )
+        ,.tail_idx_rd_req_addr          (rx_pipe_rx_tail_idx_rd_req_addr    )
+        ,.tail_idx_rd_req_rdy           (rx_tail_idx_rx_pipe_rd_req_rdy     )
     
-        ,.tail_ptr_rd_resp_val          (rx_tail_ptr_rx_pipe_rd_resp_val    )
-        ,.tail_ptr_rd_resp_data         (rx_tail_ptr_rx_pipe_rd_resp_data   )
-        ,.tail_ptr_rd_resp_rdy          (rx_pipe_rx_tail_ptr_rd_resp_rdy    )
+        ,.tail_idx_rd_resp_val          (rx_tail_idx_rx_pipe_rd_resp_val    )
+        ,.tail_idx_rd_resp_data         (rx_tail_idx_rx_pipe_rd_resp_data   )
+        ,.tail_idx_rd_resp_rdy          (rx_pipe_rx_tail_idx_rd_resp_rdy    )
     
         ,.new_flow_val                  (new_flow_val                       )
         ,.new_flow_flowid               (new_flow_flow_id                   )
-        ,.new_rx_head_ptr               ('0)
-        ,.new_rx_tail_ptr               ('0)
-        ,.new_flow_rx_payload_ptrs_rdy  (new_flow_rx_payload_ptrs_rdy       )
+        ,.new_rx_head_idx               ('{idx:'0})
+        ,.new_rx_tail_idx               ('{idx:'0})
+        ,.new_flow_rx_payload_idxs_rdy  (new_flow_rx_payload_idxs_rdy       )
+    );
+
+    rx_buf_store rx_bufs (
+         .clk   (clk    )
+        ,.rst   (rst    )
+
+        ,.wr_req_val        (rx_pipe_rx_buf_store_wr_req_val            )
+        ,.wr_req_flowid     (rx_pipe_rx_buf_store_wr_req_flowid         )
+        ,.wr_req_idx        (rx_pipe_rx_buf_store_wr_req_idx            )
+        ,.wr_req_data       (rx_pipe_rx_buf_store_wr_req_data           )
+        ,.wr_req_rdy        (rx_buf_store_rx_pipe_wr_req_rdy            )
+
+        ,.rd0_req_val       (app_rx_head_buf_rd_req_val                 )
+        ,.rd0_req_flowid    (app_rx_head_buf_rd_req_flowid              )
+        ,.rd0_req_idx       (app_rx_head_buf_rd_req_idx                 )
+        ,.rd0_req_rdy       (rx_head_buf_app_rd_req_rdy                 )
+
+        ,.rd0_resp_val       (rx_head_buf_app_rd_resp_val               )
+        ,.rd0_resp_data      (rx_head_buf_app_rd_resp_data              )
+        ,.rd0_resp_rdy       (app_rx_head_buf_rd_resp_rdy               )
+    
+        ,.rd1_req_val       (rx_store_buf_rx_buf_store_rd_req_val       )
+        ,.rd1_req_flowid    (rx_store_buf_rx_buf_store_rd_req_flowid    )
+        ,.rd1_req_idx       (rx_store_buf_rx_buf_store_rd_req_idx       )
+        ,.rd1_req_rdy       (rx_buf_store_rx_store_buf_rd_req_rdy       )
+
+        ,.rd1_resp_val      (rx_buf_store_rx_store_buf_rd_resp_val      )
+        ,.rd1_resp_data     (rx_buf_store_rx_store_buf_rd_resp_data     )
+        ,.rd1_resp_rdy      (rx_store_buf_rx_buf_store_rd_resp_rdy      )
     );
 
     tx_buf_ptrs tx_payload_qs (
@@ -676,6 +765,31 @@ import packet_struct_pkg::*;
         ,.new_flow_head_ptr         (new_tx_head_ptr                    )
         ,.new_flow_tail_ptr         (new_tx_tail_ptr                    )
         ,.new_flow_rdy              (new_flow_tx_payload_ptrs_rdy       )
+    );
+
+    tcp_malloc #(
+         .PTR_W(RX_PAYLOAD_PTR_W) // TODO: is that right? is that a crazy amount of memory? also TODO is hook that up to the actual backing memory
+        ,.LEN_MAX(MALLOC_LEN_MAX)
+        ,.STALL(0)
+    ) malloc (
+         .clk(clk)
+        ,.rst(rst)
+
+        ,.malloc_req_val(rx_pipe_rx_malloc_req_val)
+        ,.malloc_req_len(rx_pipe_rx_malloc_req_len)
+        ,.malloc_req_rdy(rx_malloc_rx_pipe_req_rdy)
+
+        ,.malloc_resp_val(rx_malloc_rx_pipe_resp_val)
+        ,.malloc_resp_success(rx_malloc_rx_pipe_resp_success)
+        ,.malloc_resp_addr(rx_malloc_rx_pipe_resp_addr)
+        ,.malloc_resp_rdy(rx_pipe_rx_malloc_resp_rdy)
+
+        ,.malloc_approx_empty_space(rx_malloc_rx_pipe_approx_empty_space)
+
+        ,.free_req_val(app_rx_free_req_val)
+        ,.free_req_addr(app_rx_free_req_addr)
+        ,.free_req_len(app_rx_free_req_len)
+        ,.free_req_rdy(rx_free_app_req_rdy)
     );
 
 endmodule

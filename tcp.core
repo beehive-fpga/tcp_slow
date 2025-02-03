@@ -18,6 +18,7 @@ filesets:
             - send_pkt_mux.sv
             - tcp.sv
             - tcp_hdr_assembler.sv
+            - tcp_malloc.sv
             - tcp_rx.sv
             - tcp_rx_ctrl.sv
             - tcp_rx_datap.sv

@@ -55,26 +55,26 @@ import packet_struct_pkg::*;
     ,input  smol_tx_state_struct            curr_tx_state_rd_resp_data
     ,output logic                           curr_tx_state_rd_resp_rdy
     
-    ,output logic                           rx_pipe_rx_head_ptr_rd_req_val
-    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_head_ptr_rd_req_addr
-    ,input  logic                           rx_head_ptr_rx_pipe_rd_req_rdy
+    ,output logic                           rx_pipe_rx_head_idx_rd_req_val
+    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_head_idx_rd_req_addr
+    ,input  logic                           rx_head_idx_rx_pipe_rd_req_rdy
 
-    ,input  logic                           rx_head_ptr_rx_pipe_rd_resp_val
-    ,input  logic   [RX_PAYLOAD_PTR_W:0]    rx_head_ptr_rx_pipe_rd_resp_data
-    ,output logic                           rx_pipe_rx_head_ptr_rd_resp_rdy
+    ,input  logic                           rx_head_idx_rx_pipe_rd_resp_val
+    ,input  logic   [RX_PAYLOAD_IDX_W:0]    rx_head_idx_rx_pipe_rd_resp_data
+    ,output logic                           rx_pipe_rx_head_idx_rd_resp_rdy
     
-    ,output logic                           rx_pipe_rx_tail_ptr_wr_req_val
-    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_ptr_wr_req_addr
-    ,output logic   [RX_PAYLOAD_PTR_W:0]    rx_pipe_rx_tail_ptr_wr_req_data
-    ,input  logic                           rx_tail_ptr_rx_pipe_wr_req_rdy
+    ,output logic                           rx_pipe_rx_tail_idx_wr_req_val
+    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_idx_wr_req_addr
+    ,output logic   [RX_PAYLOAD_IDX_W:0]    rx_pipe_rx_tail_idx_wr_req_data
+    ,input  logic                           rx_tail_idx_rx_pipe_wr_req_rdy
 
-    ,output logic                           rx_pipe_rx_tail_ptr_rd_req_val
-    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_ptr_rd_req_addr
-    ,input  logic                           rx_tail_ptr_rx_pipe_rd_req_rdy
+    ,output logic                           rx_pipe_rx_tail_idx_rd_req_val
+    ,output logic   [FLOWID_W-1:0]          rx_pipe_rx_tail_idx_rd_req_addr
+    ,input  logic                           rx_tail_idx_rx_pipe_rd_req_rdy
 
-    ,input  logic                           rx_tail_ptr_rx_pipe_rd_resp_val
-    ,input  logic   [RX_PAYLOAD_PTR_W:0]    rx_tail_ptr_rx_pipe_rd_resp_data
-    ,output logic                           rx_pipe_rx_tail_ptr_rd_resp_rdy
+    ,input  logic                           rx_tail_idx_rx_pipe_rd_resp_val
+    ,input  logic   [RX_PAYLOAD_IDX_W:0]    rx_tail_idx_rx_pipe_rd_resp_data
+    ,output logic                           rx_pipe_rx_tail_idx_rd_resp_rdy
     
     ,output                                 rx_pipe_tx_head_ptr_wr_req_val
     ,output         [FLOWID_W-1:0]          rx_pipe_tx_head_ptr_wr_req_addr
@@ -91,6 +91,23 @@ import packet_struct_pkg::*;
     ,output logic                           rx_sched_update_val
     ,output sched_cmd_struct                rx_sched_update_cmd
     ,input  logic                           sched_rx_update_rdy
+
+    ,output                                 rx_pipe_rx_malloc_req_val
+    ,output         [MALLOC_LEN_W-1:0]      rx_pipe_rx_malloc_req_len // in the native impl, this must equal LEN_MAX
+    ,input                                  rx_malloc_rx_pipe_req_rdy
+
+    ,input                                  rx_malloc_rx_pipe_resp_val
+    ,input                                  rx_malloc_rx_pipe_resp_success // 1 = addr is valid. 0 = addr is junk, retry your request or otherwise handle OOM.
+    ,input          [RX_PAYLOAD_PTR_W-1:0]  rx_malloc_rx_pipe_resp_addr
+    ,output                                 rx_pipe_rx_malloc_resp_rdy
+
+    ,input          [RX_PAYLOAD_PTR_W:0]    rx_malloc_rx_pipe_approx_empty_space
+
+    ,output                                 rx_pipe_rx_buf_store_wr_req_val   
+    ,output         [FLOWID_W-1:0]          rx_pipe_rx_buf_store_wr_req_flowid
+    ,output         [RX_PAYLOAD_IDX_W-1:0]  rx_pipe_rx_buf_store_wr_req_idx   
+    ,output         tcp_buf                 rx_pipe_rx_buf_store_wr_req_data  
+    ,input                                  rx_buf_store_rx_pipe_wr_req_rdy   
 );
     
     logic                           read_flow_cam_val;
@@ -101,6 +118,7 @@ import packet_struct_pkg::*;
     logic                           ctrl_datap_save_input;
     logic                           ctrl_datap_save_flow_state;
     logic                           ctrl_datap_save_calcs;
+    logic                           ctrl_datap_save_malloc_resp;
     
     logic                       slow_path_val;
     tcp_pkt_hdr                 slow_path_pkt;
@@ -175,20 +193,20 @@ import packet_struct_pkg::*;
         ,.curr_tx_state_rd_resp_val         (curr_tx_state_rd_resp_val          )
         ,.curr_tx_state_rd_resp_rdy         (curr_tx_state_rd_resp_rdy          )
         
-        ,.rx_pipe_rx_head_ptr_rd_req_val    (rx_pipe_rx_head_ptr_rd_req_val     )
-        ,.rx_head_ptr_rx_pipe_rd_req_rdy    (rx_head_ptr_rx_pipe_rd_req_rdy     )
+        ,.rx_pipe_rx_head_idx_rd_req_val    (rx_pipe_rx_head_idx_rd_req_val     )
+        ,.rx_head_idx_rx_pipe_rd_req_rdy    (rx_head_idx_rx_pipe_rd_req_rdy     )
     
-        ,.rx_head_ptr_rx_pipe_rd_resp_val   (rx_head_ptr_rx_pipe_rd_resp_val    )
-        ,.rx_pipe_rx_head_ptr_rd_resp_rdy   (rx_pipe_rx_head_ptr_rd_resp_rdy    )
+        ,.rx_head_idx_rx_pipe_rd_resp_val   (rx_head_idx_rx_pipe_rd_resp_val    )
+        ,.rx_pipe_rx_head_idx_rd_resp_rdy   (rx_pipe_rx_head_idx_rd_resp_rdy    )
         
-        ,.rx_pipe_rx_tail_ptr_wr_req_val    (rx_pipe_rx_tail_ptr_wr_req_val     )
-        ,.rx_tail_ptr_rx_pipe_wr_req_rdy    (rx_tail_ptr_rx_pipe_wr_req_rdy     )
+        ,.rx_pipe_rx_tail_idx_wr_req_val    (rx_pipe_rx_tail_idx_wr_req_val     )
+        ,.rx_tail_idx_rx_pipe_wr_req_rdy    (rx_tail_idx_rx_pipe_wr_req_rdy     )
     
-        ,.rx_pipe_rx_tail_ptr_rd_req_val    (rx_pipe_rx_tail_ptr_rd_req_val     )
-        ,.rx_tail_ptr_rx_pipe_rd_req_rdy    (rx_tail_ptr_rx_pipe_rd_req_rdy     )
+        ,.rx_pipe_rx_tail_idx_rd_req_val    (rx_pipe_rx_tail_idx_rd_req_val     )
+        ,.rx_tail_idx_rx_pipe_rd_req_rdy    (rx_tail_idx_rx_pipe_rd_req_rdy     )
     
-        ,.rx_tail_ptr_rx_pipe_rd_resp_val   (rx_tail_ptr_rx_pipe_rd_resp_val    )
-        ,.rx_pipe_rx_tail_ptr_rd_resp_rdy   (rx_pipe_rx_tail_ptr_rd_resp_rdy    )
+        ,.rx_tail_idx_rx_pipe_rd_resp_val   (rx_tail_idx_rx_pipe_rd_resp_val    )
+        ,.rx_pipe_rx_tail_idx_rd_resp_rdy   (rx_pipe_rx_tail_idx_rd_resp_rdy    )
         
         ,.rx_pipe_tx_head_ptr_wr_req_val    (rx_pipe_tx_head_ptr_wr_req_val     )
         ,.tx_head_ptr_rx_pipe_wr_req_rdy    (tx_head_ptr_rx_pipe_wr_req_rdy     )
@@ -196,6 +214,7 @@ import packet_struct_pkg::*;
         ,.ctrl_datap_save_input             (ctrl_datap_save_input              )
         ,.ctrl_datap_save_flow_state        (ctrl_datap_save_flow_state         )
         ,.ctrl_datap_save_calcs             (ctrl_datap_save_calcs              )
+        ,.ctrl_datap_save_malloc_resp       (ctrl_datap_save_malloc_resp        )
 
         ,.rx_sched_update_val               (rx_sched_update_val                )
         ,.sched_rx_update_rdy               (sched_rx_update_rdy                )
@@ -207,6 +226,15 @@ import packet_struct_pkg::*;
     
         ,.slow_path_done_val                (slow_path_done_val                 )
         ,.slow_path_done_rdy                (slow_path_done_rdy                 )
+
+        ,.rx_pipe_rx_malloc_req_val         (rx_pipe_rx_malloc_req_val          )
+        ,.rx_malloc_rx_pipe_req_rdy         (rx_malloc_rx_pipe_req_rdy          )
+
+        ,.rx_malloc_rx_pipe_resp_val        (rx_malloc_rx_pipe_resp_val         )
+        ,.rx_pipe_rx_malloc_resp_rdy        (rx_pipe_rx_malloc_resp_rdy         )
+
+        ,.rx_pipe_rx_buf_store_wr_req_val   (rx_pipe_rx_buf_store_wr_req_val    )
+        ,.rx_buf_store_rx_pipe_wr_req_rdy   (rx_buf_store_rx_pipe_wr_req_rdy    )
     );
     
     flowid_manager flowid_manager (
@@ -251,16 +279,16 @@ import packet_struct_pkg::*;
     
         ,.curr_tx_state_rd_resp_data        (curr_tx_state_rd_resp_data         )
         
-        ,.rx_pipe_rx_head_ptr_rd_req_addr   (rx_pipe_rx_head_ptr_rd_req_addr    )
+        ,.rx_pipe_rx_head_idx_rd_req_addr   (rx_pipe_rx_head_idx_rd_req_addr    )
     
-        ,.rx_head_ptr_rx_pipe_rd_resp_data  (rx_head_ptr_rx_pipe_rd_resp_data   )
+        ,.rx_head_idx_rx_pipe_rd_resp_data  (rx_head_idx_rx_pipe_rd_resp_data   )
         
-        ,.rx_pipe_rx_tail_ptr_wr_req_addr   (rx_pipe_rx_tail_ptr_wr_req_addr    )
-        ,.rx_pipe_rx_tail_ptr_wr_req_data   (rx_pipe_rx_tail_ptr_wr_req_data    )
+        ,.rx_pipe_rx_tail_idx_wr_req_addr   (rx_pipe_rx_tail_idx_wr_req_addr    )
+        ,.rx_pipe_rx_tail_idx_wr_req_data   (rx_pipe_rx_tail_idx_wr_req_data    )
     
-        ,.rx_pipe_rx_tail_ptr_rd_req_addr   (rx_pipe_rx_tail_ptr_rd_req_addr    )
+        ,.rx_pipe_rx_tail_idx_rd_req_addr   (rx_pipe_rx_tail_idx_rd_req_addr    )
     
-        ,.rx_tail_ptr_rx_pipe_rd_resp_data  (rx_tail_ptr_rx_pipe_rd_resp_data   )
+        ,.rx_tail_idx_rx_pipe_rd_resp_data  (rx_tail_idx_rx_pipe_rd_resp_data   )
         
         ,.rx_pipe_tx_head_ptr_wr_req_addr   (rx_pipe_tx_head_ptr_wr_req_addr    )
         ,.rx_pipe_tx_head_ptr_wr_req_data   (rx_pipe_tx_head_ptr_wr_req_data    )
@@ -278,6 +306,7 @@ import packet_struct_pkg::*;
         ,.ctrl_datap_save_input             (ctrl_datap_save_input              )
         ,.ctrl_datap_save_flow_state        (ctrl_datap_save_flow_state         )
         ,.ctrl_datap_save_calcs             (ctrl_datap_save_calcs              )
+        ,.ctrl_datap_save_malloc_resp       (ctrl_datap_save_malloc_resp        )
 
         ,.rx_sched_update_cmd               (rx_sched_update_cmd                )
 
@@ -290,6 +319,17 @@ import packet_struct_pkg::*;
         ,.slow_path_send_pkt_enqueue_flowid (rx_send_pkt_enq_flowid             )
         ,.slow_path_send_pkt_enqueue_src_ip (rx_send_pkt_enq_src_ip             )
         ,.slow_path_send_pkt_enqueue_dst_ip (rx_send_pkt_enq_dst_ip             )
+
+        ,.rx_pipe_rx_malloc_req_len         (rx_pipe_rx_malloc_req_len          )
+
+        ,.rx_malloc_rx_pipe_resp_success    (rx_malloc_rx_pipe_resp_success     )
+        ,.rx_malloc_rx_pipe_resp_addr       (rx_malloc_rx_pipe_resp_addr        )
+
+        ,.rx_malloc_rx_pipe_approx_empty_space(rx_malloc_rx_pipe_approx_empty_space)
+
+        ,.rx_pipe_rx_buf_store_wr_req_flowid(rx_pipe_rx_buf_store_wr_req_flowid )
+        ,.rx_pipe_rx_buf_store_wr_req_idx   (rx_pipe_rx_buf_store_wr_req_idx    )
+        ,.rx_pipe_rx_buf_store_wr_req_data  (rx_pipe_rx_buf_store_wr_req_data   )
     );
 
     logic   [MAX_FLOW_CNT-1:0] cam_wr_val;
