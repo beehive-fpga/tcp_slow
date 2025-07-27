@@ -246,6 +246,7 @@ import packet_struct_pkg::*;
          .pkt_ack_num       (tcp_hdr_reg.ack_num                )
         ,.our_curr_seq_num  (curr_tx_data_reg.our_seq_num       )
         ,.our_curr_ack_state(curr_rx_data_reg.our_ack_state     )
+        ,.pkt_payload_len   (payload_entry_reg.payload_len      )
     
         ,.set_rt_flag       (set_rt                             )
         ,.our_next_ack_state(our_ack_state                      )
