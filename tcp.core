@@ -31,10 +31,10 @@ filesets:
         depend:
             - uwcse:beehive:common_inc
             - uwcse:beehive:tcp_inc
-            - uwcse:buckfast:bsg_misc
-            - uwcse:buckfast:bsg_mem
-            - uwcse:buckfast:ram
-            - uwcse:buckfast:fifo
+            - uwcse:basejump:bsg_misc
+            - uwcse:basejump:bsg_mem
+            - uwcse:beehive:ram
+            - uwcse:beehive:fifo
             - uwcse:beehive:misc
         file_type: systemVerilogSource
 
