@@ -13,6 +13,11 @@ package tcp_pkg;
     localparam RX_PAYLOAD_PTR_W = PAYLOAD_PTR_W;
     localparam TX_PAYLOAD_PTR_W = PAYLOAD_PTR_W;
 
+    // TODO: idx width?
+
+    localparam MALLOC_LEN_MAX = 9216;
+    localparam MALLOC_LEN_W = $clog2(MALLOC_LEN_MAX);
+
     localparam RT_ACK_THRESHOLD = 3;
     localparam RT_ACK_THRESHOLD_W = $clog2(RT_ACK_THRESHOLD) + 1;
 
