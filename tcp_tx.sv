@@ -2,9 +2,19 @@ module tcp_tx
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
 import packet_struct_pkg::*;
-(
+#(
+    parameter MONITOR_DATA_W = -1
+)(
      input clk
     ,input rst
+    
+    ,input                                  tx_monitor_noc_val
+    ,input  [MONITOR_DATA_W-1:0]            tx_monitor_noc_data
+    ,output                                 monitor_tx_noc_rdy
+
+    ,output                                 monitor_tx_noc_val
+    ,output [MONITOR_DATA_W-1:0]            monitor_tx_noc_data
+    ,input                                  tx_monitor_noc_rdy
     
     ,input                                  sched_tx_req_val
     ,input  sched_data_struct               sched_tx_req_data
@@ -21,6 +31,11 @@ import packet_struct_pkg::*;
     ,input  logic                           tx_tail_ptr_tx_pipe_rd_resp_val
     ,input          [TX_PAYLOAD_PTR_W:0]    tx_tail_ptr_tx_pipe_rd_resp_data
     ,output logic                           tx_pipe_tx_tail_ptr_rd_resp_rdy
+    
+    ,output                                 base_ptr_wr_req_val
+    ,output         [FLOWID_W-1:0]          base_ptr_wr_req_addr
+    ,output         [TX_PAYLOAD_PTR_W:0]    base_ptr_wr_req_data
+    ,input                                  base_ptr_wr_req_rdy
     
     ,output logic                           tx_pipe_rx_state_rd_req_val
     ,output logic   [FLOWID_W-1:0]          tx_pipe_rx_state_rd_req_addr
@@ -56,6 +71,14 @@ import packet_struct_pkg::*;
     ,input  four_tuple_struct               new_flow_lookup_entry
     ,input  smol_rx_state_struct            new_flow_rx_state
     ,output                                 tx_new_flow_rdy
+    
+    ,input  logic                           new_flow_tx_buf_mgmt_cmd_val
+    ,input  buf_mgmt_cmd                    new_flow_tx_buf_mgmt_cmd
+    ,output                                 tx_buf_mgmt_new_flow_cmd_rdy
+    
+    ,output logic                           tx_buf_mgmt_new_flow_result_val
+    ,output app_cap_resp_struct             tx_buf_mgmt_new_flow_result
+    ,input                                  new_flow_tx_buf_mgmt_result_rdy
 );
     
     logic           ctrl_datap_store_flowid;
@@ -281,6 +304,34 @@ import packet_struct_pkg::*;
         ,.dst_val   (tx_sched_update_val            )
         ,.dst_data  (tx_sched_update_cmd            )
         ,.dst_rdy   (sched_tx_update_rdy            )
+    );
+
+    tcp_buf_mgmt #(
+         .MONITOR_DATA_W (MONITOR_DATA_W    )
+    ) tx_buf_mgmt (
+         .clk   (clk    )
+        ,.rst   (rst    )
+
+        ,.src_mgmt_ctrl_cmd_val        (new_flow_tx_buf_mgmt_cmd_val    )
+        ,.src_mgmt_ctrl_cmd            (new_flow_tx_buf_mgmt_cmd        )
+        ,.mgmt_src_ctrl_cmd_rdy        (tx_buf_mgmt_new_flow_cmd_rdy    )
+
+        ,.mgmt_dst_result_val          (tx_buf_mgmt_new_flow_result_val )
+        ,.mgmt_dst_result_cap          (tx_buf_mgmt_new_flow_result     )
+        ,.dst_mgmt_result_rdy          (new_flow_tx_buf_mgmt_result_rdy )
+
+        ,.mgmt_monitor_noc_val         (tx_monitor_noc_val              )
+        ,.mgmt_monitor_noc_data        (tx_monitor_noc_data             )
+        ,.monitor_mgmt_noc_rdy         (monitor_tx_noc_rdy              )
+
+        ,.monitor_mgmt_noc_val         (monitor_tx_noc_val              )
+        ,.monitor_mgmt_noc_data        (monitor_tx_noc_data             )
+        ,.mgmt_monitor_noc_rdy         (tx_monitor_noc_rdy              )
+
+        ,.mgmt_dst_flow_base_addr_val  (base_addr_wr_req_val            )
+        ,.mgmt_dst_flow_base_address_id(base_addr_wr_req_addr           )
+        ,.mgmt_dst_flow_base_address   (base_addr_wr_req_data           )
+        ,.dst_mgmt_flow_base_addr_rdy  (base_addr_wr_req_rdy            )
     );
 
 endmodule

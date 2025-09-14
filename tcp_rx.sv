@@ -3,9 +3,19 @@ module tcp_rx
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
 import packet_struct_pkg::*;
-(
+#(
+    parameter MONITOR_DATA_W = -1
+)(
      input clk
     ,input rst
+    
+    ,input                                  rx_monitor_noc_val
+    ,input  [MONITOR_DATA_W-1:0]            rx_monitor_noc_data
+    ,output                                 monitor_rx_noc_rdy
+
+    ,output                                 monitor_rx_noc_val
+    ,output [MONITOR_DATA_W-1:0]            monitor_rx_noc_data
+    ,input                                  rx_monitor_noc_rdy
 
     ,input  logic   [`IP_ADDR_W-1:0]        recv_src_ip
     ,input  logic   [`IP_ADDR_W-1:0]        recv_dst_ip
@@ -29,9 +39,21 @@ import packet_struct_pkg::*;
     ,output logic   [TX_PAYLOAD_PTR_W:0]    new_tx_tail_ptr
     ,input  logic                           new_flow_rdy
     
+    ,output logic                           new_flow_tx_buf_mgmt_cmd_val
+    ,output buf_mgmt_cmd                    new_flow_tx_buf_mgmt_cmd
+    ,input                                  tx_buf_mgmt_new_flow_cmd_rdy
+    
+    ,input  logic                           tx_buf_mgmt_new_flow_result_val
+    ,input  app_cap_resp_struct             tx_buf_mgmt_new_flow_result
+    ,output                                 new_flow_tx_buf_mgmt_result_rdy
+    
+    ,output logic                           rx_buf_mgmt_base_addr_wr_req_val
+    ,output logic   [FLOWID_W-1:0]          rx_buf_mgmt_base_addr_wr_req_addr
+    ,output vaddr_t                         rx_buf_mgmt_base_addr_wr_req_data
+    ,input  logic                           base_addr_rx_buf_mgmt_wr_req_rdy
+    
     ,output logic                           app_new_flow_notif_val
-    ,output logic   [FLOWID_W-1:0]          app_new_flow_flowid
-    ,output four_tuple_struct               app_new_flow_entry
+    ,output app_new_flow_info               app_new_flow_notif_info
     ,input  logic                           app_new_flow_notif_rdy
     
     ,output logic                           curr_rx_state_rd_req_val
@@ -116,6 +138,16 @@ import packet_struct_pkg::*;
     logic                       slow_path_store_flowid;
     
     logic   [FLOWID_W-1:0]      flowid_manager_flowid;
+    
+    logic                       new_flow_mgmt_ctrl_cmd_val;
+    buf_mgmt_cmd                new_flow_mgmt_ctrl_cmd;
+    logic                       mgmt_new_flow_ctrl_cmd_rdy;
+    
+    logic                       mgmt_new_flow_result_val;
+    app_cap_resp_struct         mgmt_new_flow_result_cap;
+    logic                       new_flow_mgmt_result_rdy;
+    logic                       ctrl_datap_save_cap;
+    logic                       ctrl_datap_save_tx_cap;
 
     tcp_rx_new_flow_ctrl new_flow_ctrl (
          .clk   (clk    )
@@ -124,6 +156,18 @@ import packet_struct_pkg::*;
         ,.slow_path_val                     (slow_path_val              )
         ,.slow_path_pkt                     (slow_path_pkt              )
         ,.slow_path_rdy                     (slow_path_rdy              )
+    
+        ,.new_flow_mgmt_ctrl_cmd_val        (new_flow_mgmt_ctrl_cmd_val )
+        ,.mgmt_new_flow_ctrl_cmd_rdy        (mgmt_new_flow_ctrl_cmd_rdy )
+
+        ,.mgmt_new_flow_result_val          (mgmt_new_flow_result_val       )
+        ,.new_flow_mgmt_result_rdy          (new_flow_mgmt_result_rdy       )
+                                             
+        ,.new_flow_tx_buf_mgmt_cmd_val      (new_flow_tx_buf_mgmt_cmd_val   )
+        ,.tx_buf_mgmt_new_flow_cmd_rdy      (tx_buf_mgmt_new_flow_cmd_rdy   )
+                                             
+        ,.tx_buf_mgmt_new_flow_result_val   (tx_buf_mgmt_new_flow_result_val)
+        ,.new_flow_tx_buf_mgmt_result_rdy   (new_flow_tx_buf_mgmt_result_rdy)
                                                                         
         ,.slow_path_done_val                (slow_path_done_val         )
         ,.slow_path_done_rdy                (slow_path_done_rdy         )
@@ -145,7 +189,38 @@ import packet_struct_pkg::*;
         ,.app_flow_notif_rdy                (app_new_flow_notif_rdy     )
     
         ,.slow_path_store_flowid            (slow_path_store_flowid     )
+        ,.ctrl_datap_save_cap               (ctrl_datap_save_cap        )
+        ,.ctrl_datap_save_tx_cap            (ctrl_datap_save_tx_cap     )
     );
+
+    tcp_buf_mgmt #(
+         .MONITOR_DATA_W (MONITOR_DATA_W    )
+    ) buf_mgmt (
+         .clk   (clk    )
+        ,.rst   (rst    )
+
+        ,.src_mgmt_ctrl_cmd_val        (new_flow_mgmt_ctrl_cmd_val  )
+        ,.src_mgmt_ctrl_cmd            (new_flow_mgmt_ctrl_cmd      )
+        ,.mgmt_src_ctrl_cmd_rdy        (mgmt_new_flow_ctrl_cmd_rdy  )
+
+        ,.mgmt_dst_result_val          (mgmt_new_flow_result_val    )
+        ,.mgmt_dst_result_cap          (mgmt_new_flow_result_cap    )
+        ,.dst_mgmt_result_rdy          (new_flow_mgmt_result_rdy    )
+
+        ,.mgmt_monitor_noc_val         (rx_monitor_noc_val          )
+        ,.mgmt_monitor_noc_data        (rx_monitor_noc_data         )
+        ,.monitor_mgmt_noc_rdy         (monitor_rx_noc_rdy          )
+
+        ,.monitor_mgmt_noc_val         (monitor_rx_noc_val          )
+        ,.monitor_mgmt_noc_data        (monitor_rx_noc_data         )
+        ,.mgmt_monitor_noc_rdy         (rx_monitor_noc_rdy          )
+
+        ,.mgmt_dst_flow_base_addr_val  (rx_buf_mgmt_base_addr_wr_req_val    )
+        ,.mgmt_dst_flow_base_address_id(rx_buf_mgmt_base_addr_wr_req_addr   )
+        ,.mgmt_dst_flow_base_address   (rx_buf_mgmt_base_addr_wr_req_data   )
+        ,.dst_mgmt_flow_base_addr_rdy  (base_addr_rx_buf_mgmt_wr_req_rdy    )
+    );
+
 
     tcp_rx_ctrl ctrl (
          .clk   (clk    )
@@ -271,13 +346,17 @@ import packet_struct_pkg::*;
         ,.new_flow_rx_state                 (new_flow_rx_state                  )
         ,.new_tx_head_ptr                   (new_tx_head_ptr                    )
         ,.new_tx_tail_ptr                   (new_tx_tail_ptr                    )
-        
-        ,.app_new_flow_flowid               (app_new_flow_flowid                )
-        ,.app_new_flow_entry                (app_new_flow_entry                 )
+    
+        ,.app_new_flow_notif_info           (app_new_flow_notif_info            )
+    
+        ,.mgmt_datap_result_cap             (mgmt_new_flow_result_cap           )
                                                                                 
         ,.ctrl_datap_save_input             (ctrl_datap_save_input              )
         ,.ctrl_datap_save_flow_state        (ctrl_datap_save_flow_state         )
         ,.ctrl_datap_save_calcs             (ctrl_datap_save_calcs              )
+        ,.ctrl_datap_save_cap               (ctrl_datap_save_cap                )
+        ,.ctrl_datap_save_tx_cap            (ctrl_datap_save_tx_cap             )
+
 
         ,.rx_sched_update_cmd               (rx_sched_update_cmd                )
 
@@ -290,6 +369,9 @@ import packet_struct_pkg::*;
         ,.slow_path_send_pkt_enqueue_flowid (rx_send_pkt_enq_flowid             )
         ,.slow_path_send_pkt_enqueue_src_ip (rx_send_pkt_enq_src_ip             )
         ,.slow_path_send_pkt_enqueue_dst_ip (rx_send_pkt_enq_dst_ip             )
+    
+        ,.new_flow_mgmt_ctrl_cmd            (new_flow_mgmt_ctrl_cmd             )
+        ,.new_flow_tx_buf_mgmt_cmd          (new_flow_tx_buf_mgmt_cmd           )
     );
 
     logic   [MAX_FLOW_CNT-1:0] cam_wr_val;

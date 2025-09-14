@@ -69,7 +69,7 @@ class TCPSlowTB():
         init_signals(dut)
         self.done_event = Event()
         self.CLOCK_CYCLE_TIME = 4
-        self.MIN_PKT_SIZE=64
+        self.MIN_PKT_SIZE = 64
         self.MAX_NUM_FLOWS = 8
         self.CIRC_BUF_SIZE = 1 << 14
         self.CLIENT_LEN_BYTES = 2

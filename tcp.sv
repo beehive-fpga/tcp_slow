@@ -3,7 +3,11 @@ module tcp
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
 import packet_struct_pkg::*;
-(
+import mem_msg_pkg::*;
+import buf_mgmt_pkg::*;
+#(
+    parameter MONITOR_DATA_W = -1
+)(
      input clk
     ,input rst
 
@@ -44,12 +48,19 @@ import packet_struct_pkg::*;
     ,output logic   [RX_PAYLOAD_PTR_W:0]        commit_ptr_store_buf_rd_resp_data
     ,input  logic                               store_buf_commit_ptr_rd_resp_rdy
 
+    ,input  logic                               store_buf_base_addr_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              store_buf_base_addr_rd_req_addr
+    ,output logic                               base_addr_store_buf_rd_req_rdy
+
+    ,output logic                               base_addr_store_buf_rd_resp_val
+    ,output vaddr_t                             base_addr_store_buf_rd_resp_data
+    ,input  logic                               store_buf_base_addr_rd_resp_rdy
+
     /********************************
      * App interface
      *******************************/
     ,output logic                               app_new_flow_notif_val
-    ,output logic   [FLOWID_W-1:0]              app_new_flow_flowid
-    ,output four_tuple_struct                   app_new_flow_entry
+    ,output app_new_flow_info                   app_new_flow_notif_info
     ,input  logic                               app_new_flow_notif_rdy
     
     ,input  logic                               app_rx_head_ptr_wr_req_val
@@ -72,6 +83,15 @@ import packet_struct_pkg::*;
     ,output logic                               rx_commit_ptr_app_rd_resp_val
     ,output logic   [RX_PAYLOAD_PTR_W:0]        rx_commit_ptr_app_rd_resp_data
     ,input  logic                               app_rx_commit_ptr_rd_resp_rdy
+
+    ,input  logic                               app_rx_base_addr_rd_req_val
+    ,input  logic   [FLOWID_W-1:0]              app_rx_base_addr_rd_req_addr
+    ,output logic                               rx_base_addr_app_rd_req_rdy
+
+    ,output logic                               rx_base_addr_app_rd_resp_val
+    ,output logic   [RX_PAYLOAD_PTR_W:0]        rx_base_addr_app_rd_resp_data
+    ,input  logic                               app_rx_base_addr_rd_resp_rdy
+
     
     ,input                                      app_tx_head_ptr_rd_req_val
     ,input          [FLOWID_W-1:0]              app_tx_head_ptr_rd_req_addr
@@ -100,7 +120,20 @@ import packet_struct_pkg::*;
     ,input  sched_cmd_struct                    app_sched_update_cmd
     ,output logic                               sched_app_update_rdy
     
+    ,output                                 rx_monitor_noc_val
+    ,output [MONITOR_DATA_W-1:0]            rx_monitor_noc_data
+    ,input                                  monitor_rx_noc_rdy
+
+    ,input                                  monitor_rx_noc_val
+    ,input  [MONITOR_DATA_W-1:0]            monitor_rx_noc_data
+    ,output                                 rx_monitor_noc_rdy
+    
 );
+    
+    logic                           rx_buf_mgmt_base_addr_wr_req_val;
+    logic   [FLOWID_W-1:0]          rx_buf_mgmt_base_addr_wr_req_addr;
+    logic   [RX_PAYLOAD_PTR_W:0]    rx_buf_mgmt_base_addr_wr_req_data;
+    logic                           base_addr_rx_buf_mgmt_wr_req_rdy;
     
     logic                           curr_rx_state_rd_req_val;
     logic   [FLOWID_W-1:0]          curr_rx_state_rd_req_addr;
@@ -236,6 +269,14 @@ import packet_struct_pkg::*;
     logic                           tx_state_tx_pipe_rd_resp_val;
     smol_tx_state_struct            tx_state_tx_pipe_rd_resp_data;
     logic                           tx_pipe_tx_state_rd_resp_rdy;
+    
+    logic                           new_flow_tx_buf_mgmt_cmd_val;
+    buf_mgmt_cmd                    new_flow_tx_buf_mgmt_cmd;
+    logic                           tx_buf_mgmt_new_flow_cmd_rdy;
+    
+    logic                           tx_buf_mgmt_new_flow_result_val;
+    app_cap_resp_struct             tx_buf_mgmt_new_flow_result;
+    logic                           new_flow_tx_buf_mgmt_result_rdy;
 
     assign new_flow_rdy = new_flow_rx_state_rdy & 
                         & new_flow_rx_payload_ptrs_rdy & new_flow_tx_state_rdy & new_flow_tx_payload_ptrs_rdy
@@ -285,6 +326,14 @@ import packet_struct_pkg::*;
          .clk   (clk    )
         ,.rst   (rst    )
     
+        ,.rx_monitor_noc_val                (rx_monitor_noc_val                 )
+        ,.rx_monitor_noc_data               (rx_monitor_noc_data                )
+        ,.monitor_rx_noc_rdy                (monitor_rx_noc_rdy                 )
+
+        ,.monitor_rx_noc_val                (monitor_rx_noc_val                 )
+        ,.monitor_rx_noc_data               (monitor_rx_noc_data                )
+        ,.rx_monitor_noc_rdy                (rx_monitor_noc_rdy                 )
+
         ,.recv_tcp_hdr_val                  (src_tcp_rx_hdr_val                 )
         ,.recv_src_ip                       (src_tcp_rx_src_ip                  )
         ,.recv_dst_ip                       (src_tcp_rx_dst_ip                  )
@@ -306,10 +355,22 @@ import packet_struct_pkg::*;
         ,.new_tx_head_ptr                   (new_tx_head_ptr                    )
         ,.new_tx_tail_ptr                   (new_tx_tail_ptr                    )
         ,.new_flow_rdy                      (new_flow_rdy                       )
+    
+        ,.new_flow_tx_buf_mgmt_cmd_val      (new_flow_tx_buf_mgmt_cmd_val       )
+        ,.new_flow_tx_buf_mgmt_cmd          (new_flow_tx_buf_mgmt_cmd           )
+        ,.tx_buf_mgmt_new_flow_cmd_rdy      (tx_buf_mgmt_new_flow_cmd_rdy       )
+                                             
+        ,.tx_buf_mgmt_new_flow_result_val   (tx_buf_mgmt_new_flow_result_val    )
+        ,.tx_buf_mgmt_new_flow_result       (tx_buf_mgmt_new_flow_result        )
+        ,.new_flow_tx_buf_mgmt_result_rdy   (new_flow_tx_buf_mgmt_result_rdy    )
+    
+        ,.rx_buf_mgmt_base_addr_wr_req_val  (rx_buf_mgmt_base_addr_wr_req_val   )
+        ,.rx_buf_mgmt_base_addr_wr_req_addr (rx_buf_mgmt_base_addr_wr_req_addr  )
+        ,.rx_buf_mgmt_base_addr_wr_req_data (rx_buf_mgmt_base_addr_wr_req_data  )
+        ,.base_addr_rx_buf_mgmt_wr_req_rdy  (base_addr_rx_buf_mgmt_wr_req_rdy   )
         
         ,.app_new_flow_notif_val            (app_new_flow_notif_val             )
-        ,.app_new_flow_flowid               (app_new_flow_flowid                )
-        ,.app_new_flow_entry                (app_new_flow_entry                 )
+        ,.app_new_flow_notif_info           (app_new_flow_notif_info            )
         ,.app_new_flow_notif_rdy            (app_new_flow_notif_rdy             )
         
         ,.curr_rx_state_rd_req_val          (curr_rx_state_rd_req_val           )
@@ -613,6 +674,27 @@ import packet_struct_pkg::*;
         ,.tail_ptr_rd_resp_val          (rx_tail_ptr_rx_pipe_rd_resp_val    )
         ,.tail_ptr_rd_resp_data         (rx_tail_ptr_rx_pipe_rd_resp_data   )
         ,.tail_ptr_rd_resp_rdy          (rx_pipe_rx_tail_ptr_rd_resp_rdy    )
+    
+        ,.base_addr_wr_req_val          (rx_buf_mgmt_base_addr_wr_req_val   )
+        ,.base_addr_wr_req_addr         (rx_buf_mgmt_base_addr_wr_req_addr  )
+        ,.base_addr_wr_req_data         (rx_buf_mgmt_base_addr_wr_req_data  )
+        ,.base_addr_wr_req_rdy          (base_addr_rx_buf_mgmt_wr_req_rdy   )
+
+        ,.base_addr_rd0_req_val         (store_buf_base_addr_rd_req_val     )
+        ,.base_addr_rd0_req_addr        (store_buf_base_addr_rd_req_addr    )
+        ,.base_addr_rd0_req_rdy         (base_addr_store_buf_rd_req_rdy     )
+
+        ,.base_addr_rd0_resp_val        (base_addr_store_buf_rd_resp_val    )
+        ,.base_addr_rd0_resp_data       (base_addr_store_buf_rd_resp_data   )
+        ,.base_addr_rd0_resp_rdy        (store_buf_base_addr_rd_resp_rdy    )
+    
+        ,.base_addr_rd1_req_val         (app_rx_base_addr_rd_req_val        )
+        ,.base_addr_rd1_req_addr        (app_rx_base_addr_rd_req_addr       )
+        ,.base_addr_rd1_req_rdy         (rx_base_addr_app_rd_req_rdy        )
+
+        ,.base_addr_rd1_resp_val        (rx_base_addr_app_rd_resp_val       )
+        ,.base_addr_rd1_resp_data       (rx_base_addr_app_rd_resp_data      )
+        ,.base_addr_rd1_resp_rdy        (app_rx_base_addr_rd_resp_rdy       )
     
         ,.new_flow_val                  (new_flow_val                       )
         ,.new_flow_flowid               (new_flow_flow_id                   )
