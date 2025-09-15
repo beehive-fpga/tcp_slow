@@ -2,6 +2,9 @@ package tcp_misc_pkg;
     `include "packet_defs.vh"
     import packet_struct_pkg::*;
     import tcp_pkg::*;
+
+    localparam PACKET_BUFFER_SIZE = 9200;
+    localparam NUM_BUFFERS = 1000;
     
     typedef enum logic [1:0]{
         SET = 2'b0,

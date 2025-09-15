@@ -1,5 +1,6 @@
 module tcp_rx_new_flow_ctrl 
 import packet_struct_pkg::*;
+import buf_mgmt_pkg::*;
 (
      input clk
     ,input rst
@@ -7,6 +8,18 @@ import packet_struct_pkg::*;
     ,input                              slow_path_val
     ,input          tcp_pkt_hdr         slow_path_pkt
     ,output logic                       slow_path_rdy
+    
+    ,output logic                       new_flow_mgmt_ctrl_cmd_val
+    ,input                              mgmt_new_flow_ctrl_cmd_rdy
+    
+    ,output logic                       mgmt_new_flow_result_val
+    ,input                              new_flow_mgmt_result_rdy
+    
+    ,output logic                       new_flow_tx_buf_mgmt_cmd_val
+    ,input                              tx_buf_mgmt_new_flow_cmd_rdy
+    
+    ,output logic                       tx_buf_mgmt_new_flow_result_val
+    ,input                              new_flow_tx_buf_mgmt_result_rdy
 
     ,output logic                       slow_path_done_val
     ,output logic                       drop_pkt
@@ -25,15 +38,21 @@ import packet_struct_pkg::*;
     ,input  logic                       app_flow_notif_rdy
 
     ,output logic                       slow_path_store_flowid
+    ,output logic                       ctrl_datap_save_cap
+    ,output logic                       ctrl_datap_save_tx_cap
 );
 
-    typedef enum logic [2:0] {
-        STATE_DEC = 3'd0,
-        NEW_FLOWID = 3'd1,
-        INIT_STATE = 3'd2,
-        SEND_SYN_ACK = 3'd3,
-        NOTIF_APP = 3'd4,
-        FIN = 3'd5,
+    typedef enum logic [3:0] {
+        STATE_DEC = 4'd0,
+        NEW_FLOWID = 4'd1,
+        INIT_STATE = 4'd2,
+        SETUP_MEM_RX = 4'd6,
+        GET_RESP_RX = 4'd7,
+        SETUP_MEM_TX = 4'd8,
+        GET_RESP_TX = 4'd9,
+        SEND_SYN_ACK = 4'd3,
+        NOTIF_APP = 4'd4,
+        FIN = 4'd5,
         UND = 'X
     } state_e;
 
@@ -54,6 +73,7 @@ import packet_struct_pkg::*;
         end
     end
 
+
     always_comb begin
         slow_path_rdy = 1'b0;
         init_state_val = 1'b0;
@@ -62,6 +82,12 @@ import packet_struct_pkg::*;
         slow_path_done_val = 1'b0;
         slow_path_store_flowid = 1'b0;
         flowid_manager_req = 1'b0;
+
+        new_flow_mgmt_ctrl_cmd_val = 1'b0; 
+        new_flow_mgmt_result_rdy = 1'b0;
+
+        ctrl_datap_save_cap = 1'b0;
+        ctrl_datap_save_tx_cap = 1'b0;
 
         drop_pkt_next = drop_pkt_reg;
         state_next = state_reg;
@@ -93,6 +119,32 @@ import packet_struct_pkg::*;
             INIT_STATE: begin
                 init_state_val = 1'b1;
                 if (init_state_rdy) begin
+                    state_next = SETUP_MEM_RX;
+                end
+            end
+            SETUP_MEM_RX: begin
+                new_flow_mgmt_ctrl_cmd_val = 1'b1;
+                if (mgmt_new_flow_ctrl_cmd_rdy) begin
+                    state_next = GET_RESP_RX;
+                end
+            end
+            GET_RESP_RX: begin
+                new_flow_mgmt_result_rdy = 1'b1;
+                ctrl_datap_save_cap = 1'b1;
+                if (mgmt_new_flow_result_val) begin
+                    state_next = SEND_SYN_ACK;
+                end
+            end
+            SETUP_MEM_TX: begin
+                new_flow_tx_buf_mgmt_cmd_val = 1'b1;
+                if (tx_buf_mgmt_new_flow_cmd_rdy) begin
+                    state_next = GET_RESP_TX;
+                end
+            end
+            GET_RESP_TX: begin
+                ctrl_datap_save_tx_cap = 1'b1;
+                new_flow_tx_buf_mgmt_result_rdy = 1'b1;
+                if (tx_buf_mgmt_new_flow_result_val) begin
                     state_next = SEND_SYN_ACK;
                 end
             end
@@ -105,7 +157,7 @@ import packet_struct_pkg::*;
             NOTIF_APP: begin
                 app_flow_notif_val = 1'b1;
                 if (app_flow_notif_rdy) begin
-                    state_next = FIN;
+                    state_next = SEND_CAP_HDR;
                 end
             end
             FIN: begin

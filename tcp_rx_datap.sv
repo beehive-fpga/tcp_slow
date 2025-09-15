@@ -2,11 +2,15 @@ module tcp_rx_datap
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
 import packet_struct_pkg::*;
-(
+import mem_msg_pkg::*;
+import apiary_noc_msg::*;
+#(
+    parameter MONITOR_DATA_W = -1
+)(
      input clk
     ,input rst
     
-    ,input  logic   [`IP_ADDR_W-1:0]        rx_src_ip
+    ,input  logic   [`IP_ADDR_W-1:0]        rx_src_ip;
     ,input  logic   [`IP_ADDR_W-1:0]        rx_dst_ip
     ,input  tcp_pkt_hdr                     rx_tcp_hdr
     ,input  payload_buf_struct              rx_payload_entry
@@ -51,13 +55,17 @@ import packet_struct_pkg::*;
     ,output smol_rx_state_struct            new_flow_rx_state
     ,output logic   [TX_PAYLOAD_PTR_W:0]    new_tx_head_ptr
     ,output logic   [TX_PAYLOAD_PTR_W:0]    new_tx_tail_ptr
+
+    ,output app_new_flow_info               app_new_flow_notif_info 
     
-    ,output logic   [FLOWID_W-1:0]          app_new_flow_flowid
-    ,output four_tuple_struct               app_new_flow_entry
+    ,input  app_cap_resp_struct         mgmt_datap_result_cap
+    ,input  app_cap_resp_struct         tx_buf_mgmt_new_flow_result
 
     ,input                                  ctrl_datap_save_input
     ,input                                  ctrl_datap_save_flow_state
     ,input                                  ctrl_datap_save_calcs
+    ,input                                  ctrl_datap_save_cap
+    ,input                                  ctrl_datap_save_tx_cap
 
     ,output sched_cmd_struct                rx_sched_update_cmd
     
@@ -70,6 +78,9 @@ import packet_struct_pkg::*;
     ,output [FLOWID_W-1:0]                  slow_path_send_pkt_enqueue_flowid
     ,output [`IP_ADDR_W-1:0]                slow_path_send_pkt_enqueue_src_ip
     ,output [`IP_ADDR_W-1:0]                slow_path_send_pkt_enqueue_dst_ip
+
+    ,output buf_mgmt_cmd                    new_flow_mgmt_ctrl_cmd
+    ,output buf_mgmt_cmd                    new_flow_tx_buf_mgmt_cmd
 );
 
     localparam OUR_SEQ_NUM = 32'hff;
@@ -122,6 +133,17 @@ import packet_struct_pkg::*;
     logic                           set_rt_next;
     logic                           set_rt_reg;
 
+    app_cap_resp_struct             cap_resp_reg;
+    app_cap_resp_struct             cap_resp_next;
+
+    app_cap_resp_struct             tx_cap_resp_reg;
+    app_cap_resp_struct             tx_cap_resp_next;
+
+    assign new_flow_mgmt_ctrl_cmd.cmd = NEW_FLOW;
+    assign new_flow_mgmt_ctrl_cmd.flowid = curr_flowid_reg;
+
+    assign new_flow_tx_buf_mgmt_cmd = new_flow_mgmt_ctrl_cmd;
+
     always_ff @(posedge clk) begin
         src_ip_reg <= src_ip_next;
         dst_ip_reg <= dst_ip_next;
@@ -137,6 +159,8 @@ import packet_struct_pkg::*;
         next_tx_head_ptr_reg <= next_tx_head_ptr_next;
         accept_payload_reg <= accept_payload_next;
         set_rt_reg <= set_rt_next;
+        cap_resp_reg <= cap_resp_next;
+        tx_cap_resp_reg <= tx_cap_resp_next;
     end
 
     assign datap_slow_path_pkt = tcp_hdr_reg;
@@ -155,6 +179,14 @@ import packet_struct_pkg::*;
                             : store_flowid_manager
                                 ? flowid_manager_flowid
                                 : curr_flowid_reg;
+
+    assign cap_resp_next = ctrl_datap_save_cap
+                            ? mgmt_datap_result_cap
+                            : cap_resp_reg;
+
+    assign tx_cap_resp_next = ctrl_datap_save_cap
+                            ? tx_buf_mgmt_new_flow_result
+                            : tx_cap_resp_reg;
 
     assign rx_pipe_rx_head_ptr_rd_req_addr = curr_flowid_reg;
     assign rx_pipe_rx_tail_ptr_rd_req_addr = curr_flowid_reg;
@@ -284,8 +316,13 @@ import packet_struct_pkg::*;
     assign new_flow_lookup_entry.host_port = tcp_hdr_reg.dst_port;
     assign new_flow_lookup_entry.dest_port = tcp_hdr_reg.src_port;
 
-    assign app_new_flow_flowid = curr_flowid_reg;
-    assign app_new_flow_entry = new_flow_lookup_entry;
+    always_comb begin
+        app_new_flow_notif_info = '0;
+        app_new_flow_notif_info.flowid = curr_flowid_reg;
+        app_new_flow_notif_info.rx_cap_buffer = cap_resp_reg;
+        app_new_flow_notif_info.tx_cap_buffer = tx_cap_resp_reg;
+        app_new_flow_notif_info.flow_entry = new_flow_lookup_entry;
+    end
 
     always_comb begin
         new_flow_rx_state = '0;
@@ -322,6 +359,7 @@ import packet_struct_pkg::*;
         ,.outbound_tcp_hdr_rdy   (1'b1)
         ,.outbound_tcp_hdr       (slow_path_send_pkt_enqueue_pkt    )
     );
+
 
     
 endmodule

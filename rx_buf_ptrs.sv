@@ -1,5 +1,6 @@
 module rx_buf_ptrs
 import tcp_pkg::*;
+import mem_msg_pkg::*;
 (
      input clk
     ,input rst
@@ -45,7 +46,7 @@ import tcp_pkg::*;
     ,output logic                           commit_ptr_rd1_resp_val
     ,output logic   [RX_PAYLOAD_PTR_W:0]    commit_ptr_rd1_resp_data
     ,input                                  commit_ptr_rd1_resp_rdy
-    
+
     ,input                                  tail_ptr_wr_req_val
     ,input          [FLOWID_W-1:0]          tail_ptr_wr_req_addr
     ,input          [RX_PAYLOAD_PTR_W:0]    tail_ptr_wr_req_data
@@ -58,6 +59,27 @@ import tcp_pkg::*;
     ,output logic                           tail_ptr_rd_resp_val
     ,output logic   [RX_PAYLOAD_PTR_W:0]    tail_ptr_rd_resp_data
     ,input                                  tail_ptr_rd_resp_rdy
+    
+    ,input  logic                           base_addr_wr_req_val
+    ,input  logic   [FLOWID_W-1:0]          base_addr_wr_req_addr
+    ,input  vaddr_t                         base_addr_wr_req_data
+    ,output logic                           base_addr_wr_req_rdy
+
+    ,input                                  base_addr_rd0_req_val
+    ,input          [FLOWID_W-1:0]          base_addr_rd0_req_addr
+    ,output logic                           base_addr_rd0_req_rdy
+
+    ,output logic                           base_addr_rd0_resp_val
+    ,output vaddr_t                         base_addr_rd0_resp_data
+    ,input                                  base_addr_rd0_resp_rdy
+    
+    ,input                                  base_addr_rd1_req_val
+    ,input          [FLOWID_W-1:0]          base_addr_rd1_req_addr
+    ,output logic                           base_addr_rd1_req_rdy
+
+    ,output logic                           base_addr_rd1_resp_val
+    ,output vaddr_t                         base_addr_rd1_resp_data
+    ,input                                  base_addr_rd1_resp_rdy
 
     ,input                                  new_flow_val
     ,input          [FLOWID_W-1:0]          new_flow_flowid
@@ -148,6 +170,39 @@ import tcp_pkg::*;
         ,.rd1_resp_data (head_ptr_rd1_resp_data     )
         ,.rd1_resp_rdy  (head_ptr_rd1_resp_rdy      )
     );
+    
+    ram_2r1w_sync_backpressure #(
+         .width_p   (VADDR_W        )
+        ,.els_p     (MAX_FLOW_CNT   )
+    ) buf_base_addrs (
+         .clk   (clk)
+        ,.rst   (rst)
+
+        ,.wr_req_val    (base_addr_wr_req_val       )
+        ,.wr_req_addr   (base_addr_wr_req_addr      )
+        ,.wr_req_data   (base_addr_wr_req_data      )
+        ,.wr_req_rdy    (base_addr_wr_req_rdy       )
+                         
+        ,.rd0_req_val   (base_addr_rd0_req_val      )
+        ,.rd0_req_addr  (base_addr_rd0_req_addr     )
+        ,.rd0_req_rdy   (base_addr_rd0_req_rdy      )
+                         
+        ,.rd0_resp_val  (base_addr_rd0_resp_val     )
+        ,.rd0_resp_addr (base_addr_rd0_resp_addr    )
+        ,.rd0_resp_data (base_addr_rd0_resp_data    )
+        ,.rd0_resp_rdy  (base_addr_rd0_resp_rdy     )
+                         
+        ,.rd1_req_val   (base_addr_rd1_req_val      )
+        ,.rd1_req_addr  (base_addr_rd1_req_addr     )
+        ,.rd1_req_rdy   (base_addr_rd1_req_rdy      )
+                         
+        ,.rd1_resp_val  (base_addr_rd1_resp_val     )
+        ,.rd1_resp_addr (base_addr_rd1_resp_addr    )
+        ,.rd1_resp_data (base_addr_rd1_resp_data    )
+        ,.rd1_resp_rdy  (base_addr_rd1_resp_rdy     )
+    );
+
+
     
     ram_2r1w_sync_backpressure #(
          .width_p   (RX_PAYLOAD_PTR_W + 1   )
