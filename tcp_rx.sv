@@ -2,6 +2,8 @@
 module tcp_rx 
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
+import buf_mgmt_pkg::*;
+import mem_msg_pkg::*;
 import packet_struct_pkg::*;
 #(
     parameter MONITOR_DATA_W = -1
@@ -104,7 +106,7 @@ import packet_struct_pkg::*;
     ,input                                  tx_head_ptr_rx_pipe_wr_req_rdy
 
     ,output logic                           rx_send_pkt_enq_req_val
-    ,output logic   [FLOWID_W-1:0]          rx_send_pkt_enq_flowid
+    ,output vaddr_t                         rx_send_pkt_enq_base_addr
     ,output tcp_pkt_hdr                     rx_send_pkt_enq_pkt
     ,output logic   [`IP_ADDR_W-1:0]        rx_send_pkt_enq_src_ip
     ,output logic   [`IP_ADDR_W-1:0]        rx_send_pkt_enq_dst_ip
@@ -350,6 +352,8 @@ import packet_struct_pkg::*;
         ,.app_new_flow_notif_info           (app_new_flow_notif_info            )
     
         ,.mgmt_datap_result_cap             (mgmt_new_flow_result_cap           )
+
+        ,.tx_buf_mgmt_new_flow_result       (tx_buf_mgmt_new_flow_result        )
                                                                                 
         ,.ctrl_datap_save_input             (ctrl_datap_save_input              )
         ,.ctrl_datap_save_flow_state        (ctrl_datap_save_flow_state         )
@@ -366,7 +370,7 @@ import packet_struct_pkg::*;
         ,.datap_slow_path_pkt               (slow_path_pkt                      )
                                                                                 
         ,.slow_path_send_pkt_enqueue_pkt    (rx_send_pkt_enq_pkt                )
-        ,.slow_path_send_pkt_enqueue_flowid (rx_send_pkt_enq_flowid             )
+        ,.slow_path_send_pkt_enqueue_base_addr (rx_send_pkt_enq_base_addr       )
         ,.slow_path_send_pkt_enqueue_src_ip (rx_send_pkt_enq_src_ip             )
         ,.slow_path_send_pkt_enqueue_dst_ip (rx_send_pkt_enq_dst_ip             )
     

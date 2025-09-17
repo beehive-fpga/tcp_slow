@@ -2,6 +2,7 @@ package tcp_misc_pkg;
     `include "packet_defs.vh"
     import packet_struct_pkg::*;
     import tcp_pkg::*;
+    import mem_msg_pkg::*;
 
     localparam PACKET_BUFFER_SIZE = 9200;
     localparam NUM_BUFFERS = 1000;
@@ -43,7 +44,7 @@ package tcp_misc_pkg;
 
     typedef struct packed {
         tcp_pkt_hdr                 pkt_hdr;
-        logic   [FLOWID_W-1:0]      flowid;
+        vaddr_t                     base_addr;
         payload_buf_struct          payload;
         logic   [`IP_ADDR_W-1:0]    src_ip; 
         logic   [`IP_ADDR_W-1:0]    dst_ip;

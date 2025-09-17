@@ -188,7 +188,7 @@ import mem_msg_pkg::*;
         ,.rd0_req_rdy   (base_addr_rd0_req_rdy      )
                          
         ,.rd0_resp_val  (base_addr_rd0_resp_val     )
-        ,.rd0_resp_addr (base_addr_rd0_resp_addr    )
+        ,.rd0_resp_addr ()
         ,.rd0_resp_data (base_addr_rd0_resp_data    )
         ,.rd0_resp_rdy  (base_addr_rd0_resp_rdy     )
                          
@@ -197,7 +197,7 @@ import mem_msg_pkg::*;
         ,.rd1_req_rdy   (base_addr_rd1_req_rdy      )
                          
         ,.rd1_resp_val  (base_addr_rd1_resp_val     )
-        ,.rd1_resp_addr (base_addr_rd1_resp_addr    )
+        ,.rd1_resp_addr ()
         ,.rd1_resp_data (base_addr_rd1_resp_data    )
         ,.rd1_resp_rdy  (base_addr_rd1_resp_rdy     )
     );

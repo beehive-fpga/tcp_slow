@@ -15,6 +15,12 @@ import tcp_pkg::*;
     
     ,input  logic           tx_tail_ptr_tx_pipe_rd_resp_val
     ,output logic           tx_pipe_tx_tail_ptr_rd_resp_rdy
+    
+    ,output logic           tx_pipe_tx_base_addr_rd_req_val
+    ,input  logic           tx_base_addr_tx_pipe_rd_req_rdy
+
+    ,input  logic           tx_base_addr_tx_pipe_rd_resp_val
+    ,output logic           tx_pipe_tx_base_addr_rd_resp_rdy 
 
     ,output logic           proto_calc_curr_tx_state_rd_req_val
     ,input  logic           proto_calc_curr_tx_state_rd_req_rdy
@@ -42,6 +48,7 @@ import tcp_pkg::*;
     ,output logic           ctrl_datap_store_calc
     ,output logic           ctrl_datap_store_tuple
     ,output logic           ctrl_datap_store_sched
+    ,output logic           ctrl_datap_store_base_addr
 
     ,input  logic           datap_ctrl_produce_pkt
 
@@ -49,15 +56,15 @@ import tcp_pkg::*;
     ,input  logic           proto_calc_tx_pkt_rdy
 );
 
-    typedef enum logic[2:0] {
-        READ_SCHED = 3'd0,
-        RD_STATE = 3'd1,
-        RD_TUPLE = 3'd2,
-        WAIT_TUPLE_RESP = 3'd3,
-        CALC = 3'd4,
-        WRITEBACK = 3'd5,
-        PKT_OUT = 3'd6,
-        SCHED_UPDATE = 3'd7,
+    typedef enum logic[3:0] {
+        READ_SCHED = 4'd0,
+        RD_STATE = 4'd1,
+        RD_BASE_ADDR = 4'd8,
+        RD_TUPLE = 4'd2,
+        CALC = 4'd4,
+        WRITEBACK = 4'd5,
+        PKT_OUT = 4'd6,
+        SCHED_UPDATE = 4'd7,
         UND = 'X
     } state_e;
 
@@ -80,9 +87,13 @@ import tcp_pkg::*;
         ctrl_datap_store_calc = 1'b0;
         ctrl_datap_store_tuple = 1'b0;
         ctrl_datap_store_sched = 1'b0;
+        ctrl_datap_store_base_addr = 1'b0;
 
         tx_pipe_tx_tail_ptr_rd_req_val = 1'b0;
         tx_pipe_tx_tail_ptr_rd_resp_rdy = 1'b0;
+
+        tx_pipe_tx_base_addr_rd_req_val = 1'b0;
+        tx_pipe_tx_base_addr_rd_resp_rdy = 1'b0;
 
         proto_calc_curr_tx_state_rd_req_val = 1'b0;
         proto_calc_curr_tx_state_rd_resp_rdy = 1'b0;
@@ -134,15 +145,26 @@ import tcp_pkg::*;
                     proto_calc_curr_tx_state_rd_resp_rdy = 1'b1;
                     tx_pipe_tx_tail_ptr_rd_resp_rdy = 1'b1;
                     proto_calc_rx_state_rd_resp_rdy = 1'b1;
+                    state_next = RD_BASE_ADDR;
+                end
+            end
+            RD_BASE_ADDR: begin
+                ctrl_datap_store_tuple = 1'b1;
+                proto_calc_tuple_rd_resp_rdy = 1'b1;
+
+                tx_pipe_tx_base_addr_rd_req_val = 1'b1;
+                tx_pipe_tx_base_addr_rd_resp_rdy = 1'b1;
+
+                if (tuple_proto_calc_rd_resp_val & tx_base_addr_tx_pipe_rd_req_rdy) begin
+                    proto_calc_tuple_rd_resp_rdy = 1'b1;
                     state_next = CALC;
                 end
             end
             CALC: begin
                 ctrl_datap_store_calc = 1'b1;
-                ctrl_datap_store_tuple = 1'b1;
-                proto_calc_tuple_rd_resp_rdy = 1'b1;
+                ctrl_datap_store_base_addr = 1'b1;
 
-                if (tuple_proto_calc_rd_resp_val) begin
+                if (tx_base_addr_tx_pipe_rd_resp_val) begin
                     state_next = PKT_OUT;
                 end
             end

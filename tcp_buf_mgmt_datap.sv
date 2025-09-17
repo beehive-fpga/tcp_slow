@@ -2,6 +2,7 @@ module tcp_buf_mgmt_datap
 import mem_msg_pkg::*;
 import tcp_pkg::*;
 import buf_mgmt_pkg::*;
+import apiary_noc_msg::*;
 #(
      parameter MONITOR_DATA_W = -1
 )
@@ -23,6 +24,7 @@ import buf_mgmt_pkg::*;
     ,input  logic   ctrl_datap_store_cmd
     ,input  logic   ctrl_datap_store_cap_resp
 );
+    localparam APP_CAP_REQ_STRUCT_PADDING = MONITOR_DATA_W - APP_CAP_REQ_STRUCT_W;
 
     apiary_hdr_flit cap_req_hdr_flit;
     app_cap_req_struct cap_req_body_flit;
@@ -53,7 +55,7 @@ import buf_mgmt_pkg::*;
 
     assign mgmt_monitor_noc_data = ctrl_datap_send_alloc_hdr
                                 ? cap_req_hdr_flit 
-                                : cap_req_body_flit;
+                                : {cap_req_body_flit, {APP_CAP_REQ_STRUCT_PADDING{1'b0}}};
     
     
     always_comb begin
@@ -68,7 +70,8 @@ import buf_mgmt_pkg::*;
     end
 
     always_comb begin
+        cap_req_body_flit = '0;
         cap_req_body_flit.size = 1 << PAYLOAD_PTR_W;
-        cap_req_body_flit.perms = PERM_WRITE | PERM_READ;
+        cap_req_body_flit.perm_flags = PERM_WRITE | PERM_READ;
     end
 endmodule

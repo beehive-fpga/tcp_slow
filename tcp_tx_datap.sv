@@ -3,6 +3,7 @@ module tcp_tx_datap
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
 import packet_struct_pkg::*;
+import mem_msg_pkg::*;
 (
      input clk
     ,input rst
@@ -14,6 +15,10 @@ import packet_struct_pkg::*;
     ,output logic   [FLOWID_W-1:0]          tx_pipe_tx_tail_ptr_rd_req_addr
     
     ,input  logic   [TX_PAYLOAD_PTR_W:0]    tx_tail_ptr_tx_pipe_rd_resp_data
+    
+    ,output logic   [FLOWID_W-1:0]          tx_pipe_tx_base_addr_rd_req_data
+
+    ,input  vaddr_t                         tx_base_addr_tx_pipe_rd_resp_data
 
     ,output logic   [FLOWID_W-1:0]          proto_calc_curr_tx_state_rd_req_addr
 
@@ -35,11 +40,12 @@ import packet_struct_pkg::*;
     ,input  logic                           ctrl_datap_store_calc
     ,input  logic                           ctrl_datap_store_tuple
     ,input  logic                           ctrl_datap_store_sched
+    ,input  logic                           ctrl_datap_store_base_addr
 
     ,output logic                           datap_ctrl_produce_pkt
 
     ,output tcp_pkt_hdr                     proto_calc_tx_pkt_hdr
-    ,output logic   [FLOWID_W-1:0]          proto_calc_tx_flowid
+    ,output vaddr_t                         proto_calc_tx_base_addr
     ,output logic   [`IP_ADDR_W-1:0]        proto_calc_tx_src_ip_addr
     ,output logic   [`IP_ADDR_W-1:0]        proto_calc_tx_dst_ip_addr
     ,output payload_buf_struct              proto_calc_tx_payload
@@ -93,6 +99,9 @@ import packet_struct_pkg::*;
     sched_cmd_struct            update_cmd_next;
     sched_cmd_struct            update_cmd;
 
+    vaddr_t base_addr_reg;
+    vaddr_t base_addr_next;
+
 
     assign tx_pipe_tx_tail_ptr_rd_req_addr = sched_data_reg.flowid;
     assign proto_calc_curr_tx_state_rd_req_addr = sched_data_reg.flowid;
@@ -106,9 +115,15 @@ import packet_struct_pkg::*;
     assign proto_calc_tx_dst_ip_addr = flow_tuple_reg.dest_ip;
     assign proto_calc_tx_pkt_hdr = hdr_out_reg;
     assign proto_calc_tx_payload = payload_desc_reg;
-    assign proto_calc_tx_flowid = sched_data_reg.flowid;
+    assign proto_calc_tx_base_addr = base_addr_reg;
 
     assign tx_sched_update_cmd = update_cmd_reg;
+
+    assign tx_pipe_tx_base_addr_rd_req_data = sched_data_reg.flowid;
+
+    assign base_addr_next = ctrl_datap_store_base_addr
+                            ? tx_base_addr_tx_pipe_rd_resp_data
+                            : base_addr_reg;
 
 
     always_ff @(posedge clk) begin
@@ -124,6 +139,7 @@ import packet_struct_pkg::*;
 
         new_unsent_reg <= new_unsent_next;
         rt_unsent_reg <= rt_unsent_next;
+        base_addr_reg <= base_addr_next;
     end
 
     always_comb begin

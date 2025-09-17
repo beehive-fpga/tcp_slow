@@ -12,14 +12,14 @@ import buf_mgmt_pkg::*;
     ,output logic                       new_flow_mgmt_ctrl_cmd_val
     ,input                              mgmt_new_flow_ctrl_cmd_rdy
     
-    ,output logic                       mgmt_new_flow_result_val
-    ,input                              new_flow_mgmt_result_rdy
+    ,input  logic                       mgmt_new_flow_result_val
+    ,output logic                       new_flow_mgmt_result_rdy
     
     ,output logic                       new_flow_tx_buf_mgmt_cmd_val
     ,input                              tx_buf_mgmt_new_flow_cmd_rdy
     
-    ,output logic                       tx_buf_mgmt_new_flow_result_val
-    ,input                              new_flow_tx_buf_mgmt_result_rdy
+    ,input  logic                       tx_buf_mgmt_new_flow_result_val
+    ,output logic                       new_flow_tx_buf_mgmt_result_rdy
 
     ,output logic                       slow_path_done_val
     ,output logic                       drop_pkt
@@ -157,7 +157,7 @@ import buf_mgmt_pkg::*;
             NOTIF_APP: begin
                 app_flow_notif_val = 1'b1;
                 if (app_flow_notif_rdy) begin
-                    state_next = SEND_CAP_HDR;
+                    state_next = FIN;
                 end
             end
             FIN: begin

@@ -2,6 +2,7 @@ module tcp_buf_mgmt
 import apiary_noc_msg::*;
 import mem_msg_pkg::*;
 import tcp_pkg::*;
+import buf_mgmt_pkg::*;
 #(
      parameter MONITOR_DATA_W = -1
 )(
@@ -40,16 +41,19 @@ import tcp_pkg::*;
         ,.src_mgmt_ctrl_cmd_val         (src_mgmt_ctrl_cmd_val          )
         ,.src_mgmt_ctrl_cmd_type        (src_mgmt_ctrl_cmd.cmd          )
         ,.mgmt_src_ctrl_cmd_rdy         (mgmt_src_ctrl_cmd_rdy          )
-    
+
         ,.mgmt_monitor_noc_val          (mgmt_monitor_noc_val           )
         ,.monitor_mgmt_noc_rdy          (monitor_mgmt_noc_rdy           )
-    
+
+        ,.monitor_mgmt_noc_val          (monitor_mgmt_noc_val           )
+        ,.mgmt_monitor_noc_rdy          (mgmt_monitor_noc_rdy           )
+
         ,.mgmt_dst_result_val           (mgmt_dst_result_val            )
         ,.dst_mgmt_result_rdy           (dst_mgmt_result_rdy            )
-                                         
+
         ,.mgmt_dst_flow_base_addr_val   (mgmt_dst_flow_base_addr_val    )
         ,.dst_mgmt_flow_base_addr_rdy   (dst_mgmt_flow_base_addr_rdy    )
-                                         
+
         ,.ctrl_datap_store_cmd          (ctrl_datap_store_cmd           )
         ,.ctrl_datap_send_alloc_hdr     (ctrl_datap_send_alloc_hdr      )
         ,.ctrl_datap_store_cap_resp     (ctrl_datap_store_cap_resp      )
@@ -66,6 +70,8 @@ import tcp_pkg::*;
         ,.monitor_mgmt_noc_data         (monitor_mgmt_noc_data          )
 
         ,.src_mgmt_ctrl_cmd             (src_mgmt_ctrl_cmd              )
+    
+        ,.mgmt_dst_result_cap           (mgmt_dst_result_cap            )
 
         ,.mgmt_dst_flow_base_address_id (mgmt_dst_flow_base_address_id  )
         ,.mgmt_dst_flow_base_address    (mgmt_dst_flow_base_address     )

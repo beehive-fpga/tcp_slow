@@ -4,13 +4,14 @@ import tcp_misc_pkg::*;
 import packet_struct_pkg::*;
 import mem_msg_pkg::*;
 import apiary_noc_msg::*;
+import buf_mgmt_pkg::*;
 #(
     parameter MONITOR_DATA_W = -1
 )(
      input clk
     ,input rst
     
-    ,input  logic   [`IP_ADDR_W-1:0]        rx_src_ip;
+    ,input  logic   [`IP_ADDR_W-1:0]        rx_src_ip
     ,input  logic   [`IP_ADDR_W-1:0]        rx_dst_ip
     ,input  tcp_pkt_hdr                     rx_tcp_hdr
     ,input  payload_buf_struct              rx_payload_entry
@@ -75,7 +76,7 @@ import apiary_noc_msg::*;
     ,output tcp_pkt_hdr                     datap_slow_path_pkt
 
     ,output tcp_pkt_hdr                     slow_path_send_pkt_enqueue_pkt
-    ,output [FLOWID_W-1:0]                  slow_path_send_pkt_enqueue_flowid
+    ,output vaddr_t                         slow_path_send_pkt_enqueue_base_addr
     ,output [`IP_ADDR_W-1:0]                slow_path_send_pkt_enqueue_src_ip
     ,output [`IP_ADDR_W-1:0]                slow_path_send_pkt_enqueue_dst_ip
 
@@ -343,7 +344,7 @@ import apiary_noc_msg::*;
 
     assign slow_path_send_pkt_enqueue_src_ip = dst_ip_reg;
     assign slow_path_send_pkt_enqueue_dst_ip = src_ip_reg;
-    assign slow_path_send_pkt_enqueue_flowid = curr_flowid_reg;
+    assign slow_path_send_pkt_enqueue_base_addr = cap_resp_reg.addr;
 
     tcp_hdr_assembler hdr_assemble (
          .tcp_hdr_req_val       (1'b1                              )

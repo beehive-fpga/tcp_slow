@@ -1,6 +1,7 @@
 package tcp_pkg;
     `include "soc_defs.vh"
     import mem_msg_pkg::*;
+    import packet_struct_pkg::*;
 
     localparam DUP_ACK_CNT_W = 4;
     localparam DUP_ACK_RT = 3;
@@ -19,6 +20,7 @@ package tcp_pkg;
 
     localparam PAYLOAD_ENTRY_ADDR_W = 32;
     localparam PAYLOAD_ENTRY_LEN_W = 16;
+
     typedef struct packed {
         logic   [FLOWID_W-1:0]  flowid;
         app_cap_resp_struct     rx_cap_buffer;

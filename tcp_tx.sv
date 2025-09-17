@@ -2,19 +2,21 @@ module tcp_tx
 import tcp_pkg::*;
 import tcp_misc_pkg::*;
 import packet_struct_pkg::*;
+import buf_mgmt_pkg::*;
+import mem_msg_pkg::*;
 #(
     parameter MONITOR_DATA_W = -1
 )(
      input clk
     ,input rst
     
-    ,input                                  tx_monitor_noc_val
-    ,input  [MONITOR_DATA_W-1:0]            tx_monitor_noc_data
-    ,output                                 monitor_tx_noc_rdy
+    ,output                                 tx_monitor_noc_val
+    ,output [MONITOR_DATA_W-1:0]            tx_monitor_noc_data
+    ,input                                  monitor_tx_noc_rdy
 
-    ,output                                 monitor_tx_noc_val
-    ,output [MONITOR_DATA_W-1:0]            monitor_tx_noc_data
-    ,input                                  tx_monitor_noc_rdy
+    ,input                                  monitor_tx_noc_val
+    ,input  [MONITOR_DATA_W-1:0]            monitor_tx_noc_data
+    ,output                                 tx_monitor_noc_rdy
     
     ,input                                  sched_tx_req_val
     ,input  sched_data_struct               sched_tx_req_data
@@ -32,10 +34,18 @@ import packet_struct_pkg::*;
     ,input          [TX_PAYLOAD_PTR_W:0]    tx_tail_ptr_tx_pipe_rd_resp_data
     ,output logic                           tx_pipe_tx_tail_ptr_rd_resp_rdy
     
-    ,output                                 base_ptr_wr_req_val
-    ,output         [FLOWID_W-1:0]          base_ptr_wr_req_addr
-    ,output         [TX_PAYLOAD_PTR_W:0]    base_ptr_wr_req_data
-    ,input                                  base_ptr_wr_req_rdy
+    ,output                                 tx_buf_mgmt_base_addr_wr_req_val
+    ,output         [FLOWID_W-1:0]          tx_buf_mgmt_base_addr_wr_req_addr
+    ,output vaddr_t                         tx_buf_mgmt_base_addr_wr_req_data
+    ,input                                  base_addr_tx_buf_mgmt_wr_req_rdy
+
+    ,output logic                           tx_pipe_tx_base_addr_rd_req_val
+    ,output logic   [FLOWID_W-1:0]          tx_pipe_tx_base_addr_rd_req_data
+    ,input  logic                           tx_base_addr_tx_pipe_rd_req_rdy
+
+    ,input  logic                           tx_base_addr_tx_pipe_rd_resp_val
+    ,input  vaddr_t                         tx_base_addr_tx_pipe_rd_resp_data
+    ,output logic                           tx_pipe_tx_base_addr_rd_resp_rdy 
     
     ,output logic                           tx_pipe_rx_state_rd_req_val
     ,output logic   [FLOWID_W-1:0]          tx_pipe_rx_state_rd_req_addr
@@ -59,7 +69,7 @@ import packet_struct_pkg::*;
     ,input  logic                           tx_state_tx_pipe_wr_req_rdy
 
     ,output logic                           tx_pkt_hdr_val
-    ,output logic   [FLOWID_W-1:0]          tx_pkt_flowid
+    ,output vaddr_t                         tx_pkt_base_addr
     ,output tcp_pkt_hdr                     tx_pkt_hdr
     ,output logic   [`IP_ADDR_W-1:0]        tx_pkt_src_ip_addr
     ,output logic   [`IP_ADDR_W-1:0]        tx_pkt_dst_ip_addr
@@ -86,6 +96,7 @@ import packet_struct_pkg::*;
     logic           ctrl_datap_store_calc;
     logic           ctrl_datap_store_tuple;
     logic           ctrl_datap_store_sched;
+    logic           ctrl_datap_store_base_addr;
 
     logic           datap_ctrl_produce_pkt;
     
@@ -134,6 +145,10 @@ import packet_struct_pkg::*;
                                                                                  
         ,.tx_tail_ptr_tx_pipe_rd_resp_data      (tx_tail_ptr_tx_pipe_rd_resp_data       )
     
+        ,.tx_pipe_tx_base_addr_rd_req_data      (tx_pipe_tx_base_addr_rd_req_data       )
+                                                 
+        ,.tx_base_addr_tx_pipe_rd_resp_data     (tx_base_addr_tx_pipe_rd_resp_data      )
+    
         ,.proto_calc_curr_tx_state_rd_req_addr  (tx_pipe_tx_state_rd_req_addr           )
                                                                                         
         ,.proto_calc_curr_tx_state_rd_resp_data (tx_state_tx_pipe_rd_resp_data          )
@@ -154,11 +169,12 @@ import packet_struct_pkg::*;
         ,.ctrl_datap_store_calc                 (ctrl_datap_store_calc                  )
         ,.ctrl_datap_store_tuple                (ctrl_datap_store_tuple                 )
         ,.ctrl_datap_store_sched                (ctrl_datap_store_sched                 )
+        ,.ctrl_datap_store_base_addr            (ctrl_datap_store_base_addr             )
 
         ,.datap_ctrl_produce_pkt                (datap_ctrl_produce_pkt                 )
     
         ,.proto_calc_tx_pkt_hdr                 (tx_pkt_hdr                             )
-        ,.proto_calc_tx_flowid                  (tx_pkt_flowid                          )
+        ,.proto_calc_tx_base_addr               (tx_pkt_base_addr                       )
         ,.proto_calc_tx_src_ip_addr             (tx_pkt_src_ip_addr                     )
         ,.proto_calc_tx_dst_ip_addr             (tx_pkt_dst_ip_addr                     )
         ,.proto_calc_tx_payload                 (tx_pkt_payload                         )
@@ -179,6 +195,12 @@ import packet_struct_pkg::*;
                                                                                         
         ,.tx_tail_ptr_tx_pipe_rd_resp_val       (tx_tail_ptr_tx_pipe_rd_resp_val        )
         ,.tx_pipe_tx_tail_ptr_rd_resp_rdy       (tx_pipe_tx_tail_ptr_rd_resp_rdy        )
+    
+        ,.tx_pipe_tx_base_addr_rd_req_val       (tx_pipe_tx_base_addr_rd_req_val        )
+        ,.tx_base_addr_tx_pipe_rd_req_rdy       (tx_base_addr_tx_pipe_rd_req_rdy        )
+                                                 
+        ,.tx_base_addr_tx_pipe_rd_resp_val      (tx_base_addr_tx_pipe_rd_resp_val       )
+        ,.tx_pipe_tx_base_addr_rd_resp_rdy      (tx_pipe_tx_base_addr_rd_resp_rdy       )
                                                                                         
         ,.proto_calc_curr_tx_state_rd_req_val   (tx_pipe_tx_state_rd_req_val            )
         ,.proto_calc_curr_tx_state_rd_req_rdy   (tx_state_tx_pipe_rd_req_rdy            )
@@ -206,6 +228,7 @@ import packet_struct_pkg::*;
         ,.ctrl_datap_store_calc                 (ctrl_datap_store_calc                  )
         ,.ctrl_datap_store_tuple                (ctrl_datap_store_tuple                 )
         ,.ctrl_datap_store_sched                (ctrl_datap_store_sched                 )
+        ,.ctrl_datap_store_base_addr            (ctrl_datap_store_base_addr             )
 
         ,.datap_ctrl_produce_pkt                (datap_ctrl_produce_pkt                 )
     
@@ -328,10 +351,10 @@ import packet_struct_pkg::*;
         ,.monitor_mgmt_noc_data        (monitor_tx_noc_data             )
         ,.mgmt_monitor_noc_rdy         (tx_monitor_noc_rdy              )
 
-        ,.mgmt_dst_flow_base_addr_val  (base_addr_wr_req_val            )
-        ,.mgmt_dst_flow_base_address_id(base_addr_wr_req_addr           )
-        ,.mgmt_dst_flow_base_address   (base_addr_wr_req_data           )
-        ,.dst_mgmt_flow_base_addr_rdy  (base_addr_wr_req_rdy            )
+        ,.mgmt_dst_flow_base_addr_val  (tx_buf_mgmt_base_addr_wr_req_val    )
+        ,.mgmt_dst_flow_base_address_id(tx_buf_mgmt_base_addr_wr_req_addr   )
+        ,.mgmt_dst_flow_base_address   (tx_buf_mgmt_base_addr_wr_req_data   )
+        ,.dst_mgmt_flow_base_addr_rdy  (base_addr_tx_buf_mgmt_wr_req_rdy    )
     );
 
 endmodule

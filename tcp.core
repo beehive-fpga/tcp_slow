@@ -28,6 +28,9 @@ filesets:
             - their_ack_process.sv
             - tx_buf_ptrs.sv
             - tx_timeout_eng.sv
+            - tcp_buf_mgmt.sv
+            - tcp_buf_mgmt_ctrl.sv
+            - tcp_buf_mgmt_datap.sv
         depend:
             - uwcse:beehive:common_inc
             - uwcse:beehive:tcp_inc

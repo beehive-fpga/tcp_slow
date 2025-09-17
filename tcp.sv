@@ -6,7 +6,11 @@ import packet_struct_pkg::*;
 import mem_msg_pkg::*;
 import buf_mgmt_pkg::*;
 #(
-    parameter MONITOR_DATA_W = -1
+     parameter MONITOR_DATA_W = -1
+    ,parameter TCP_RX_DRAM_X = -1
+    ,parameter TCP_RX_DRAM_Y = -1
+    ,parameter TCP_TX_DRAM_X = -1
+    ,parameter TCP_TX_DRAM_Y = -1
 )(
      input clk
     ,input rst
@@ -20,7 +24,7 @@ import buf_mgmt_pkg::*;
 
     ,output logic                               tx_pkt_hdr_val
     ,output tcp_pkt_hdr                         tx_pkt_hdr
-    ,output logic   [FLOWID_W-1:0]              tx_pkt_flowid
+    ,output vaddr_t                             tx_pkt_base_addr
     ,output logic   [`IP_ADDR_W-1:0]            tx_pkt_src_ip_addr
     ,output logic   [`IP_ADDR_W-1:0]            tx_pkt_dst_ip_addr
     ,output payload_buf_struct                  tx_pkt_payload
@@ -89,7 +93,7 @@ import buf_mgmt_pkg::*;
     ,output logic                               rx_base_addr_app_rd_req_rdy
 
     ,output logic                               rx_base_addr_app_rd_resp_val
-    ,output logic   [RX_PAYLOAD_PTR_W:0]        rx_base_addr_app_rd_resp_data
+    ,output vaddr_t                             rx_base_addr_app_rd_resp_data
     ,input  logic                               app_rx_base_addr_rd_resp_rdy
 
     
@@ -128,12 +132,33 @@ import buf_mgmt_pkg::*;
     ,input  [MONITOR_DATA_W-1:0]            monitor_rx_noc_data
     ,output                                 rx_monitor_noc_rdy
     
+    ,output                                 tx_monitor_noc_val
+    ,output [MONITOR_DATA_W-1:0]            tx_monitor_noc_data
+    ,input                                  monitor_tx_noc_rdy
+
+    ,input                                  monitor_tx_noc_val
+    ,input  [MONITOR_DATA_W-1:0]            monitor_tx_noc_data
+    ,output                                 tx_monitor_noc_rdy
+    
 );
     
     logic                           rx_buf_mgmt_base_addr_wr_req_val;
     logic   [FLOWID_W-1:0]          rx_buf_mgmt_base_addr_wr_req_addr;
-    logic   [RX_PAYLOAD_PTR_W:0]    rx_buf_mgmt_base_addr_wr_req_data;
+    vaddr_t                         rx_buf_mgmt_base_addr_wr_req_data;
     logic                           base_addr_rx_buf_mgmt_wr_req_rdy;
+    
+    logic                           tx_buf_mgmt_base_addr_wr_req_val;
+    logic   [FLOWID_W-1:0]          tx_buf_mgmt_base_addr_wr_req_addr;
+    vaddr_t                         tx_buf_mgmt_base_addr_wr_req_data;
+    logic                           base_addr_tx_buf_mgmt_wr_req_rdy;
+    
+    logic                           tx_pipe_tx_base_addr_rd_req_val;
+    logic   [FLOWID_W-1:0]          tx_pipe_tx_base_addr_rd_req_data;
+    logic                           tx_base_addr_tx_pipe_rd_req_rdy;
+
+    logic                           tx_base_addr_tx_pipe_rd_resp_val;
+    vaddr_t                         tx_base_addr_tx_pipe_rd_resp_data;
+    logic                           tx_pipe_tx_base_addr_rd_resp_rdy;
     
     logic                           curr_rx_state_rd_req_val;
     logic   [FLOWID_W-1:0]          curr_rx_state_rd_req_addr;
@@ -208,7 +233,7 @@ import buf_mgmt_pkg::*;
     logic                           new_flow_tx_payload_ptrs_rdy;
 
     logic                           rx_send_pkt_mux_val;
-    logic   [FLOWID_W-1:0]          rx_send_pkt_flowid;
+    vaddr_t                         rx_send_pkt_base_addr;
     tcp_pkt_hdr                     rx_send_pkt_hdr;
     payload_buf_struct              rx_send_pkt_payload;
     logic   [`IP_ADDR_W-1:0]        rx_send_pkt_src_ip;
@@ -221,7 +246,7 @@ import buf_mgmt_pkg::*;
     payload_buf_struct              tx_send_pkt_mux_payload;
     logic   [`IP_ADDR_W-1:0]        tx_send_pkt_mux_src_ip;
     logic   [`IP_ADDR_W-1:0]        tx_send_pkt_mux_dst_ip;
-    logic   [FLOWID_W-1:0]          tx_send_pkt_mux_flowid;
+    vaddr_t                         tx_send_pkt_mux_base_addr;
     send_pkt_struct                 tx_send_pkt_mux_data;
     logic                           send_pkt_mux_tx_rdy;
 
@@ -285,7 +310,7 @@ import buf_mgmt_pkg::*;
     // tx mux
     always_comb begin
         rx_send_pkt_mux_data = '0;
-        rx_send_pkt_mux_data.flowid = rx_send_pkt_flowid;
+        rx_send_pkt_mux_data.base_addr = rx_send_pkt_base_addr;
         rx_send_pkt_mux_data.pkt_hdr = rx_send_pkt_hdr;
         rx_send_pkt_mux_data.payload = '0;
         rx_send_pkt_mux_data.src_ip = rx_send_pkt_src_ip;
@@ -293,7 +318,7 @@ import buf_mgmt_pkg::*;
 
         tx_send_pkt_mux_data = '0;
         tx_send_pkt_mux_data.pkt_hdr = tx_send_pkt_mux_hdr;
-        tx_send_pkt_mux_data.flowid = tx_send_pkt_mux_flowid;
+        tx_send_pkt_mux_data.base_addr = tx_send_pkt_mux_base_addr;
         tx_send_pkt_mux_data.payload = tx_send_pkt_mux_payload;
         tx_send_pkt_mux_data.src_ip = tx_send_pkt_mux_src_ip;
         tx_send_pkt_mux_data.dst_ip = tx_send_pkt_mux_dst_ip;
@@ -319,10 +344,12 @@ import buf_mgmt_pkg::*;
     assign tx_pkt_src_ip_addr = tx_send_pkt_struct.src_ip;
     assign tx_pkt_dst_ip_addr = tx_send_pkt_struct.dst_ip;
     assign tx_pkt_payload = tx_send_pkt_struct.payload;
-    assign tx_pkt_flowid = tx_send_pkt_struct.flowid;
+    assign tx_pkt_base_addr = tx_send_pkt_struct.base_addr;
     assign tx_pkt_hdr = tx_send_pkt_struct.pkt_hdr;
 
-    tcp_rx rx_engine (
+    tcp_rx #(
+        .MONITOR_DATA_W (MONITOR_DATA_W)
+    ) rx_engine (
          .clk   (clk    )
         ,.rst   (rst    )
     
@@ -421,7 +448,7 @@ import buf_mgmt_pkg::*;
         ,.tx_head_ptr_rx_pipe_wr_req_rdy    (tx_head_ptr_rx_pipe_wr_req_rdy     )
     
         ,.rx_send_pkt_enq_req_val           (rx_send_pkt_mux_val                )
-        ,.rx_send_pkt_enq_flowid            (rx_send_pkt_flowid                 )
+        ,.rx_send_pkt_enq_base_addr         (rx_send_pkt_base_addr              )
         ,.rx_send_pkt_enq_pkt               (rx_send_pkt_hdr                    )
         ,.rx_send_pkt_enq_src_ip            (rx_send_pkt_src_ip                 )
         ,.rx_send_pkt_enq_dst_ip            (rx_send_pkt_dst_ip                 )
@@ -432,60 +459,91 @@ import buf_mgmt_pkg::*;
         ,.sched_rx_update_rdy               (sched_rx_update_rdy                )
     );
 
-    tcp_tx tx_engine (
+    tcp_tx #( 
+        .MONITOR_DATA_W (MONITOR_DATA_W )
+    ) tx_engine (
          .clk   (clk    )
         ,.rst   (rst    )
-        
+
+        ,.tx_monitor_noc_val                    (tx_monitor_noc_val                 )
+        ,.tx_monitor_noc_data                   (tx_monitor_noc_data                )
+        ,.monitor_tx_noc_rdy                    (monitor_tx_noc_rdy                 )
+
+        ,.monitor_tx_noc_val                    (monitor_tx_noc_val                 )
+        ,.monitor_tx_noc_data                   (monitor_tx_noc_data                )
+        ,.tx_monitor_noc_rdy                    (tx_monitor_noc_rdy                 )
+
         ,.sched_tx_req_val                      (sched_tx_req_val                   )
         ,.sched_tx_req_data                     (sched_tx_req_data                  )
         ,.tx_sched_req_rdy                      (tx_sched_req_rdy                   )
-                                                                                    
+
         ,.tx_sched_update_val                   (tx_sched_update_val                )
         ,.tx_sched_update_cmd                   (tx_sched_update_cmd                )
         ,.sched_tx_update_rdy                   (sched_tx_update_rdy                )
-    
+
         ,.tx_pipe_tx_tail_ptr_rd_req_val        (tx_pipe_tx_tail_ptr_rd_req_val     )
         ,.tx_pipe_tx_tail_ptr_rd_req_addr       (tx_pipe_tx_tail_ptr_rd_req_addr    )
         ,.tx_tail_ptr_tx_pipe_rd_req_rdy        (tx_tail_ptr_tx_pipe_rd_req_rdy     )
-                                                                                    
+
         ,.tx_tail_ptr_tx_pipe_rd_resp_val       (tx_tail_ptr_tx_pipe_rd_resp_val    )
         ,.tx_tail_ptr_tx_pipe_rd_resp_data      (tx_tail_ptr_tx_pipe_rd_resp_data   )
         ,.tx_pipe_tx_tail_ptr_rd_resp_rdy       (tx_pipe_tx_tail_ptr_rd_resp_rdy    )
-        
+    
+        ,.tx_buf_mgmt_base_addr_wr_req_val      (tx_buf_mgmt_base_addr_wr_req_val   )
+        ,.tx_buf_mgmt_base_addr_wr_req_addr     (tx_buf_mgmt_base_addr_wr_req_addr  )
+        ,.tx_buf_mgmt_base_addr_wr_req_data     (tx_buf_mgmt_base_addr_wr_req_data  )
+        ,.base_addr_tx_buf_mgmt_wr_req_rdy      (base_addr_tx_buf_mgmt_wr_req_rdy   )
+    
+        ,.tx_pipe_tx_base_addr_rd_req_val       (tx_pipe_tx_base_addr_rd_req_val    )
+        ,.tx_pipe_tx_base_addr_rd_req_data      (tx_pipe_tx_base_addr_rd_req_data   )
+        ,.tx_base_addr_tx_pipe_rd_req_rdy       (tx_base_addr_tx_pipe_rd_req_rdy    )
+                                                 
+        ,.tx_base_addr_tx_pipe_rd_resp_val      (tx_base_addr_tx_pipe_rd_resp_val   )
+        ,.tx_base_addr_tx_pipe_rd_resp_data     (tx_base_addr_tx_pipe_rd_resp_data  )
+        ,.tx_pipe_tx_base_addr_rd_resp_rdy      (tx_pipe_tx_base_addr_rd_resp_rdy   )
+
         ,.tx_pipe_rx_state_rd_req_val           (tx_pipe_rx_state_rd_req_val        )
         ,.tx_pipe_rx_state_rd_req_addr          (tx_pipe_rx_state_rd_req_addr       )
         ,.rx_state_tx_pipe_rd_req_rdy           (rx_state_tx_pipe_rd_req_rdy        )
-                                                                                    
+
         ,.rx_state_tx_pipe_rd_resp_val          (rx_state_tx_pipe_rd_resp_val       )
         ,.rx_state_tx_pipe_rd_resp_data         (rx_state_tx_pipe_rd_resp_data      )
         ,.tx_pipe_rx_state_rd_resp_rdy          (tx_pipe_rx_state_rd_resp_rdy       )
-        
+
         ,.tx_pipe_tx_state_rd_req_val           (tx_pipe_tx_state_rd_req_val        )
         ,.tx_pipe_tx_state_rd_req_addr          (tx_pipe_tx_state_rd_req_addr       )
         ,.tx_state_tx_pipe_rd_req_rdy           (tx_state_tx_pipe_rd_req_rdy        )
-                                                                                    
+
         ,.tx_state_tx_pipe_rd_resp_val          (tx_state_tx_pipe_rd_resp_val       )
         ,.tx_state_tx_pipe_rd_resp_data         (tx_state_tx_pipe_rd_resp_data      )
         ,.tx_pipe_tx_state_rd_resp_rdy          (tx_pipe_tx_state_rd_resp_rdy       )
-                                                                                    
+
         ,.tx_pipe_tx_state_wr_req_val           (tx_pipe_tx_state_wr_req_val        )
         ,.tx_pipe_tx_state_wr_req_addr          (tx_pipe_tx_state_wr_req_addr       )
         ,.tx_pipe_tx_state_wr_req_data          (tx_pipe_tx_state_wr_req_data       )
         ,.tx_state_tx_pipe_wr_req_rdy           (tx_state_tx_pipe_wr_req_rdy        )
-    
+
         ,.tx_pkt_hdr_val                        (tx_send_pkt_mux_val                )
         ,.tx_pkt_hdr                            (tx_send_pkt_mux_hdr                )
-        ,.tx_pkt_flowid                         (tx_send_pkt_mux_flowid             )
+        ,.tx_pkt_base_addr                      (tx_send_pkt_mux_base_addr          )
         ,.tx_pkt_src_ip_addr                    (tx_send_pkt_mux_src_ip             )
         ,.tx_pkt_dst_ip_addr                    (tx_send_pkt_mux_dst_ip             )
         ,.tx_pkt_payload                        (tx_send_pkt_mux_payload            )
         ,.tx_pkt_hdr_rdy                        (send_pkt_mux_tx_rdy                )
-        
+
         ,.new_flow_val                          (new_flow_val                       )
         ,.new_flow_flow_id                      (new_flow_flow_id                   )
         ,.new_flow_lookup_entry                 (new_flow_lookup_entry              )
         ,.new_flow_rx_state                     (new_flow_rx_state                  )
         ,.tx_new_flow_rdy                       (tx_new_flow_rdy                    )
+    
+        ,.new_flow_tx_buf_mgmt_cmd_val          (new_flow_tx_buf_mgmt_cmd_val       )
+        ,.new_flow_tx_buf_mgmt_cmd              (new_flow_tx_buf_mgmt_cmd           )
+        ,.tx_buf_mgmt_new_flow_cmd_rdy          (tx_buf_mgmt_new_flow_cmd_rdy       )
+                                                 
+        ,.tx_buf_mgmt_new_flow_result_val       (tx_buf_mgmt_new_flow_result_val    )
+        ,.tx_buf_mgmt_new_flow_result           (tx_buf_mgmt_new_flow_result        )
+        ,.new_flow_tx_buf_mgmt_result_rdy       (new_flow_tx_buf_mgmt_result_rdy    )
     );
 
 /************************************************
@@ -758,6 +816,20 @@ import buf_mgmt_pkg::*;
         ,.new_flow_head_ptr         (new_tx_head_ptr                    )
         ,.new_flow_tail_ptr         (new_tx_tail_ptr                    )
         ,.new_flow_rdy              (new_flow_tx_payload_ptrs_rdy       )
+    
+        ,.base_ptr_rd_req0_val      (tx_pipe_tx_base_addr_rd_req_val    )
+        ,.base_ptr_rd_req0_addr     (tx_pipe_tx_base_addr_rd_req_data   )
+        ,.base_ptr_rd_req0_rdy      (tx_base_addr_tx_pipe_rd_req_rdy    )
+
+        ,.base_ptr_rd_resp0_val     (tx_base_addr_tx_pipe_rd_resp_val   )
+        ,.base_ptr_rd_resp0_addr    ()
+        ,.base_ptr_rd_resp0_data    (tx_base_addr_tx_pipe_rd_resp_data  )
+        ,.base_ptr_rd_resp0_rdy     (tx_pipe_tx_base_addr_rd_resp_rdy   )
+    
+        ,.base_ptr_wr_req_val       (tx_buf_mgmt_base_addr_wr_req_val   )
+        ,.base_ptr_wr_req_addr      (tx_buf_mgmt_base_addr_wr_req_addr  )
+        ,.base_ptr_wr_req_data      (tx_buf_mgmt_base_addr_wr_req_data  )
+        ,.base_ptr_wr_req_rdy       (base_addr_tx_buf_mgmt_wr_req_rdy   )
     );
 
 endmodule

@@ -4,15 +4,18 @@ import buf_mgmt_pkg::*;
      input clk
     ,input rst
 
-    ,input          src_mgmt_ctrl_cmd_val
-    ,input  cmd_e   src_mgmt_ctrl_cmd_type
-    ,output         mgmt_src_ctrl_cmd_rdy
+    ,input              src_mgmt_ctrl_cmd_val
+    ,input  buf_cmd_e   src_mgmt_ctrl_cmd_type
+    ,output logic       mgmt_src_ctrl_cmd_rdy
     
     ,output logic                           mgmt_dst_result_val
     ,input                                  dst_mgmt_result_rdy
     
-    ,output                                 mgmt_monitor_noc_val
+    ,output logic                           mgmt_monitor_noc_val
     ,input                                  monitor_mgmt_noc_rdy
+    
+    ,input  logic                           monitor_mgmt_noc_val
+    ,output logic                           mgmt_monitor_noc_rdy
 
     ,output logic   mgmt_dst_flow_base_addr_val
     ,input  logic   dst_mgmt_flow_base_addr_rdy
@@ -36,8 +39,8 @@ import buf_mgmt_pkg::*;
     state_e state_reg;
     state_e state_next;
 
-    cmd_e   cmd_reg;
-    cmd_e   cmd_next;
+    buf_cmd_e   cmd_reg;
+    buf_cmd_e   cmd_next;
 
     always_ff @(posedge clk) begin
         if (rst) begin
@@ -63,7 +66,7 @@ import buf_mgmt_pkg::*;
         case (state_reg)
             READY: begin
                 mgmt_src_ctrl_cmd_rdy = 1'b1;
-                cmd_next = src_mgmt_ctrl_cmd;
+                cmd_next = src_mgmt_ctrl_cmd_type;
                 ctrl_datap_store_cmd = 1'b1;
                 if (src_mgmt_ctrl_cmd_val) begin
                     state_next = PARSE_CMD;
