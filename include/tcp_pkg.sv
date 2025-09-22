@@ -1,5 +1,6 @@
 package tcp_pkg;
     `include "soc_defs.vh"
+    `include "noc_defs.vh"
     import mem_msg_pkg::*;
     import packet_struct_pkg::*;
 
@@ -20,6 +21,19 @@ package tcp_pkg;
 
     localparam PAYLOAD_ENTRY_ADDR_W = 32;
     localparam PAYLOAD_ENTRY_LEN_W = 16;
+
+    typedef enum logic {
+        RX = 0,
+        TX = 1
+    } buf_dir_e;
+
+    typedef struct packed {
+        logic   [FLOWID_W-1:0]      flowid;
+        logic   [CAP_SIZE_W-1:0]    size;
+        logic   [CAP_SIZE_W-1:0]    base_offset;
+        buf_dir_e                   buf_dir;
+    } tcp_notif_flow_info;
+    localparam TCP_NOTIF_FLOW_INFO_W = $bits(tcp_notif_flow_info);
 
     typedef struct packed {
         logic   [FLOWID_W-1:0]  flowid;

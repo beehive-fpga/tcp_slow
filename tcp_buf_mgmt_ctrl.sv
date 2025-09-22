@@ -30,7 +30,8 @@ import buf_mgmt_pkg::*;
         PARSE_CMD = 3'd1,
         ALLOC_CAP_HDR = 3'd2,
         ALLOC_CAP_BODY = 3'd3,
-        WAIT_ALLOC_RESP = 3'd4,
+        WAIT_ALLOC_RESP_HDR = 3'd4,
+        WAIT_ALLOC_RESP_BODY = 3'd7,
         SET_BASE_ADDR = 3'd5,
         REPLY = 3'd6,
         UND = 'X
@@ -54,6 +55,7 @@ import buf_mgmt_pkg::*;
 
     always_comb begin
         mgmt_src_ctrl_cmd_rdy = 1'b0;
+        mgmt_dst_result_val = 1'b0;
         ctrl_datap_send_alloc_hdr = 1'b0;
         ctrl_datap_store_cmd = 1'b0;
         ctrl_datap_store_cap_resp = 1'b0;
@@ -89,10 +91,16 @@ import buf_mgmt_pkg::*;
             ALLOC_CAP_BODY: begin
                 mgmt_monitor_noc_val = 1'b1;
                 if (monitor_mgmt_noc_rdy) begin
-                    state_next = WAIT_ALLOC_RESP;
+                    state_next = WAIT_ALLOC_RESP_HDR;
                 end
             end
-            WAIT_ALLOC_RESP: begin
+            WAIT_ALLOC_RESP_HDR: begin
+                mgmt_monitor_noc_rdy = 1'b1;
+                if (monitor_mgmt_noc_val) begin
+                    state_next = WAIT_ALLOC_RESP_BODY;
+                end
+            end
+            WAIT_ALLOC_RESP_BODY: begin
                 mgmt_monitor_noc_rdy = 1'b1;
                 ctrl_datap_store_cap_resp = 1'b1;
                 if (monitor_mgmt_noc_val) begin
@@ -100,9 +108,8 @@ import buf_mgmt_pkg::*;
                 end
             end
             SET_BASE_ADDR: begin
-                mgmt_dst_flow_base_addr_val = monitor_mgmt_noc_val;
-                mgmt_monitor_noc_rdy = dst_mgmt_flow_base_addr_rdy;
-                if (monitor_mgmt_noc_val & dst_mgmt_flow_base_addr_rdy) begin
+                mgmt_dst_flow_base_addr_val = 1'b1;
+                if (dst_mgmt_flow_base_addr_rdy) begin
                     state_next = REPLY;
                 end
             end

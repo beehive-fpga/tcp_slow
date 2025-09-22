@@ -185,7 +185,7 @@ import buf_mgmt_pkg::*;
                             ? mgmt_datap_result_cap
                             : cap_resp_reg;
 
-    assign tx_cap_resp_next = ctrl_datap_save_cap
+    assign tx_cap_resp_next = ctrl_datap_save_tx_cap
                             ? tx_buf_mgmt_new_flow_result
                             : tx_cap_resp_reg;
 

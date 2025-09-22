@@ -46,7 +46,7 @@ import apiary_noc_msg::*;
     end
 
     assign cap_next = ctrl_datap_store_cap_resp
-                    ? mgmt_monitor_noc_data[MONITOR_DATA_W-1 -: APP_CAP_RESP_STRUCT_W]
+                    ? monitor_mgmt_noc_data[MONITOR_DATA_W-1 -: APP_CAP_RESP_STRUCT_W]
                     : cap_reg;
 
     assign cmd_next = ctrl_datap_store_cmd
@@ -64,6 +64,7 @@ import apiary_noc_msg::*;
         cap_req_hdr_flit.core.dst_y_coord = '1;
         cap_req_hdr_flit.core.dst_fbits = MEM_MANAGE_FBITS;
         cap_req_hdr_flit.core.msg_type = ALLOC_MEM;
+        cap_req_hdr_flit.core.msg_len = 1;
         cap_req_hdr_flit.core.src_x_coord = '1;
         cap_req_hdr_flit.core.src_y_coord = '1;
         cap_req_hdr_flit.core.src_fbits = PKT_IF_FBITS;

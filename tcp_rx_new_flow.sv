@@ -85,6 +85,8 @@ import buf_mgmt_pkg::*;
 
         new_flow_mgmt_ctrl_cmd_val = 1'b0; 
         new_flow_mgmt_result_rdy = 1'b0;
+        new_flow_tx_buf_mgmt_cmd_val = 1'b0;
+        new_flow_tx_buf_mgmt_result_rdy = 1'b0;
 
         ctrl_datap_save_cap = 1'b0;
         ctrl_datap_save_tx_cap = 1'b0;
@@ -132,7 +134,7 @@ import buf_mgmt_pkg::*;
                 new_flow_mgmt_result_rdy = 1'b1;
                 ctrl_datap_save_cap = 1'b1;
                 if (mgmt_new_flow_result_val) begin
-                    state_next = SEND_SYN_ACK;
+                    state_next = SETUP_MEM_TX;
                 end
             end
             SETUP_MEM_TX: begin
