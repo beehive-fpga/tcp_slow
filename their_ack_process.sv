@@ -21,7 +21,14 @@ import tcp_pkg::*;
     logic   [RX_PAYLOAD_PTR_W:0]    rx_buf_space_left;
     logic                           rx_buf_has_space;
 
-    assign rx_buf_space_used = rx_tail_ptr - rx_head_ptr;
+    space_used_calc #(
+        .PTR_W  (RX_PAYLOAD_PTR_W)
+    ) buf_space_used (
+         .lead_ptr      (rx_tail_ptr)
+        ,.trail_ptr     (rx_head_ptr)
+        ,.space_used_calc   (rx_buf_space_used)
+    );
+
     assign rx_buf_space_left = {1'b1, {(RX_PAYLOAD_PTR_W){1'b0}}} - rx_buf_space_used;
     assign rx_buf_has_space = rx_buf_space_left >= packet_payload_len;
 

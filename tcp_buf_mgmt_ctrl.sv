@@ -55,6 +55,7 @@ import buf_mgmt_pkg::*;
 
     always_comb begin
         mgmt_src_ctrl_cmd_rdy = 1'b0;
+        mgmt_dst_flow_base_addr_val = 1'b0;
         mgmt_dst_result_val = 1'b0;
         ctrl_datap_send_alloc_hdr = 1'b0;
         ctrl_datap_store_cmd = 1'b0;

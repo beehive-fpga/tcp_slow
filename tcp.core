@@ -16,6 +16,7 @@ filesets:
             - seg_size_calc.sv
             - seg_size_calc_w_window.sv
             - send_pkt_mux.sv
+            - space_used_calc.sv
             - tcp.sv
             - tcp_hdr_assembler.sv
             - tcp_rx.sv
